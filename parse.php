@@ -28,6 +28,7 @@ function arg_check() {
 function read_input() {
     $header = false;
     $programXML = new SimpleXMLElement("<program></program>");
+    $instr_order = 1;
     while($line = fgets(STDIN)) {   
         $line = remove_comments(trim($line, "\n"));
         $line = trim($line, " ");
@@ -37,23 +38,33 @@ function read_input() {
             if($line == ".IPPcode22") {
                 $header = true;
                 $programXML->addAttribute('language', $line);
-                
-
             }
         }
 
         switch(strtoupper($split[0])) {
             case 'DEFVAR':
-                $instruction = $programXML->addChild('instruction');
-                $instruction->addAttribute('opcode', $split[0]);
-                if(preg_match(("/(LF|GF|TF)@[a-zA-Z#$&*][a-zA-Z#$&*0-9]*/"), $split[1])) {
-                    $instructionArg1 = $instruction->addChild('arg1', $split[1]);
-                    $instructionArg1->addAttribute('type', 'var');
+                $instruction = add_instruction($programXML, $split[0], $instr_order);
+                if(is_valid_var($split[1])) {
+                    add_arg($instruction, '1', $split[1], 'var');
                 }
                 else {
-                    fwrite(STDERR, "WRONG DEFVAR OPERANDS\n");
+                    wrong_operands('DEFVAR');
                 }
+                break;
+            case 'WRITE':
+                $instruction = add_instruction($programXML, $split[0], $instr_order);
+                if(is_valid_var($split[1])) {
+                    add_arg($instruction, '1', $split[1], 'var');
+                }
+                elseif (is_valid_symb($split[1])) {
+                    add_arg($instruction, '1', $split[1], 'symb');
+                }
+                else {
+                    wrong_operands('WRITE');
+                }
+                break;
         }
+        $instr_order++;
     }
     // formating 
     $doc = new DOMDocument();
@@ -61,6 +72,33 @@ function read_input() {
     $doc->formatOutput = true;
     echo $doc->saveXML();
 }
+
+function wrong_operands($instr_n) {
+    fwrite(STDERR, "WRONG ".$instr_n." OPERANDS\n");
+    exit(23);
+}
+
+function add_instruction($programXML, $instr_n, $order) {
+    $instruction = $programXML->addChild('instruction');
+    $instruction->addAttribute('order', $order);
+    $instruction->addAttribute('opcode', $instr_n);
+    return $instruction;
+}
+
+function add_arg($instruction, $arg_num, $arg_content, $type) {
+    $arg = $instruction->addChild('arg'.$arg_num, $arg_content);
+    $arg->addAttribute('type', $type);
+    return $arg;
+}
+
+function is_valid_var($var_n) {
+    return preg_match(("/(LF|GF|TF)@[a-zA-Z#$&*][a-zA-Z#$&*0-9]*/"), $var_n);
+}
+
+function is_valid_symb($symb_n) {
+    return preg_match(("/(LF|GF|TF|string|bool)@[a-zA-Z#$&*\][a-zA-Z#$&*0-9]*/"), $symb_n);
+}
+
 
 function remove_comments($line) {
     $pos = strpos($line, "#");
