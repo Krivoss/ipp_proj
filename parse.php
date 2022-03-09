@@ -8,7 +8,7 @@
 *        the XML representation of the program
 */
 
-# init_set('display_errors', 'stderr');
+ini_set('display_errors', 'stderr');
 
 arg_check();
 
