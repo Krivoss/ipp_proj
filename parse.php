@@ -1,4 +1,13 @@
 <?php
+/**
+* @file parse.php
+* @author Jakub Krivanek (xkriva30), FIT
+* @date March 2022 (academic year 2021/2022)
+* @brief Parses source code IPPcode22 from std input, checks 
+*        lexical and syntactic correctness and prints to std output
+*        the XML representation of the program
+*/
+
 # init_set('display_errors', 'stderr');
 
 arg_check();
@@ -76,8 +85,8 @@ function read_input() {
                     wrong_num_operands(strtoupper($split[0]));
                 }
                 if(is_valid_var($split[1]) && is_valid_symb($split[2])) {
-                    add_arg($instruction, '1', $split[1], 'var');
-                    add_arg($instruction, '2', $split[2], 'symb');
+                    add_arg($instruction, '1', $split[1]);
+                    add_arg($instruction, '2', $split[2]);
                 }
                 else {
                     wrong_operands($split[0]);
@@ -98,7 +107,7 @@ function read_input() {
                     wrong_num_operands(strtoupper($split[0]));
                 }
                 if(is_valid_var($split[1])) {
-                    add_arg($instruction, '1', $split[1], 'var');
+                    add_arg($instruction, '1', $split[1]);
                 }
                 else {
                     wrong_operands($split[0]);
@@ -111,7 +120,7 @@ function read_input() {
                     wrong_num_operands(strtoupper($split[0]));
                 }
                 if(is_valid_label($split[1])) {
-                    add_arg($instruction, '1', $split[1], 'label');
+                    add_arg($instruction, '1', $split[1]);
                 }
                 else {
                     wrong_operands($split[0]);
@@ -125,7 +134,7 @@ function read_input() {
                     wrong_num_operands(strtoupper($split[0]));
                 }
                 if (is_valid_symb($split[1])) {
-                    add_arg($instruction, '1', $split[1], 'symb');
+                    add_arg($instruction, '1', $split[1]);
                 }
                 else {
                     wrong_operands($split[0]);
@@ -149,9 +158,9 @@ function read_input() {
                     wrong_num_operands(strtoupper($split[0]));
                 }
                 if (is_valid_var($split[1]) && is_valid_symb($split[2]) && is_valid_symb($split[3])) {
-                    add_arg($instruction, '1', $split[1], 'var');
-                    add_arg($instruction, '2', $split[2], 'symb');
-                    add_arg($instruction, '3', $split[3], 'symb');
+                    add_arg($instruction, '1', $split[1]);
+                    add_arg($instruction, '2', $split[2]);
+                    add_arg($instruction, '3', $split[3]);
                 }
                 else {
                     wrong_operands($split[0]);
@@ -162,8 +171,8 @@ function read_input() {
                     wrong_num_operands(strtoupper($split[0]));
                 }
                 if(is_valid_var($split[1]) && is_valid_type($split[2])) {
-                    add_arg($instruction, '1', $split[1], 'var');
-                    add_arg($instruction, '2', $split[2], 'type');
+                    add_arg($instruction, '1', $split[1]);
+                    add_arg($instruction, '2', $split[2]);
                 }
                 else {
                     wrong_operands($split[0]);
@@ -175,9 +184,9 @@ function read_input() {
                     wrong_num_operands(strtoupper($split[0]));
                 }
                 if (is_valid_label($split[1]) && is_valid_symb($split[2]) && is_valid_symb($split[3])) {
-                    add_arg($instruction, '1', $split[1], 'label');
-                    add_arg($instruction, '2', $split[2], 'symb');
-                    add_arg($instruction, '3', $split[3], 'symb');
+                    add_arg($instruction, '1', $split[1]);
+                    add_arg($instruction, '2', $split[2]);
+                    add_arg($instruction, '3', $split[3]);
                 }
                 else {
                     wrong_operands($split[0]);
@@ -215,10 +224,49 @@ function add_instruction($programXML, $instr_n, $order) {
     return $instruction;
 }
 
-function add_arg($instruction, $arg_num, $arg_content, $type) {
-    $arg = $instruction->addChild('arg'.$arg_num, $arg_content);
-    $arg->addAttribute('type', $type);
+function add_arg($instruction, $arg_num, $arg_content) {
+    $arg = $instruction->addChild('arg'.$arg_num, arg_text_element($arg_content));
+    $arg->addAttribute('type', typeofarg($arg_content));
     return $arg;
+}
+
+function typeofarg($arg_content) {
+    if(preg_match(("/(LF|GF|TF)@[a-zA-Z#$&*][a-zA-Z#$&*0-9]*/"), $arg_content)) {
+        return 'var';
+    }
+    elseif(preg_match(("/string@*/"), $arg_content)) {
+        return 'string';
+    }
+    elseif(preg_match(("/bool@(true|false)/"), $arg_content)) {
+        return 'bool';
+    }
+    elseif(preg_match(("/int@[0-9]+/"), $arg_content)) {
+        return 'int';
+    }
+    elseif(preg_match(("/(int|string|bool)/"), $arg_content)) {
+        return 'type';
+    }
+    elseif(preg_match(("/[a-zA-Z#$&*][a-zA-Z#$&*0-9]*/"), $arg_content)) {
+        return 'label';
+    }    
+    else {
+        exit(99);
+    }
+}
+
+function arg_text_element($arg_content) {
+    $arg_type = typeofarg($arg_content);
+    switch($arg_type) {
+        case 'var':
+        case 'label':
+        case 'type':
+            return $arg_content;
+            break;
+        default:
+            $pos = strpos($arg_content, "@");
+            return substr($arg_content, $pos + 1, strlen($arg_content) - $pos);
+            break;            
+    }
 }
 
 function is_valid_var($var_n) {
@@ -239,6 +287,5 @@ function is_valid_label($label_n) {
 function is_valid_type($type_n) {
     return  preg_match(("/(int|string|bool)/"), $type_n);
 }
-
 
 ?>
