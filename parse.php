@@ -23,7 +23,7 @@ function arg_check() {
         switch ($option) {
             case 'h':
             case 'help':
-                echo("Usage: php8.1 parser.php [options] <inputFile\n");
+                echo("Usage: php8.1 parse.php [options] <inputFile >outputFile\n");
                 exit(0);
                 break;
             default:
@@ -64,8 +64,9 @@ function read_input() {
             }
         }
 
+        $split[0] = strtoupper($split[0]);
         $instruction;
-        if (in_array(strtoupper($split[0]), $instruction_list)) {
+        if (in_array($split[0], $instruction_list)) {
             $instruction = add_instruction($programXML, $split[0], $instr_order);
         }
         elseif ($split[0] == '') {
@@ -76,7 +77,9 @@ function read_input() {
             exit(22);
         }
 
-        switch(strtoupper($split[0])) {
+        
+        switch($split[0]) {
+            // <var> <symb>
             case 'MOVE':
             case 'INT2CHAR':
             case 'STRLEN':
@@ -92,6 +95,7 @@ function read_input() {
                     wrong_operands($split[0]);
                 }
                 break;
+            // no operands
             case 'CREATEFRAME':
             case 'PUSHFRAME':
             case 'POPFRAME':
@@ -101,6 +105,7 @@ function read_input() {
                     wrong_num_operands(strtoupper($split[0]));
                 }
                 break;
+            // <var>
             case 'DEFVAR':
             case 'POPS':
                 if(count($split) != 2) {
@@ -113,6 +118,7 @@ function read_input() {
                     wrong_operands($split[0]);
                 }
                 break;
+            // <label>
             case 'CALL':
             case 'LABEL':
             case 'JUMP':
@@ -126,6 +132,7 @@ function read_input() {
                     wrong_operands($split[0]);
                 }
                 break;
+            // <symb>
             case 'PUSHS':
             case 'WRITE':
             case 'EXIT':
@@ -140,6 +147,7 @@ function read_input() {
                     wrong_operands($split[0]);
                 }
                 break;
+            // <var> <symb_1> <symb_2>
             case 'ADD':
             case 'SUB':
             case 'MUL':
@@ -165,7 +173,8 @@ function read_input() {
                 else {
                     wrong_operands($split[0]);
                 }
-                break;    
+                break;
+            // <var> <type>    
             case 'READ':
                 if(count($split) != 3) {
                     wrong_num_operands(strtoupper($split[0]));
@@ -178,6 +187,7 @@ function read_input() {
                     wrong_operands($split[0]);
                 }
                 break;
+            // <label> <symb_1> <symb_2>
             case 'JUMPIFEQ':
             case 'JUMPIFNEQ':
                 if(count($split) != 4) {
@@ -231,22 +241,25 @@ function add_arg($instruction, $arg_num, $arg_content) {
 }
 
 function typeofarg($arg_content) {
-    if(preg_match(("/(LF|GF|TF)@[a-zA-Z#$&*][a-zA-Z#$&*0-9]*/"), $arg_content)) {
+    if(preg_match(("/(LF|GF|TF)@[a-zA-Z_$&%*!?-][a-zA-Z_$&%*!?0-9-]*$/"), $arg_content)) {
         return 'var';
     }
     elseif(preg_match(("/string@*/"), $arg_content)) {
         return 'string';
     }
-    elseif(preg_match(("/bool@(true|false)/"), $arg_content)) {
+    elseif(preg_match(("/bool@(true|false)$/"), $arg_content)) {
         return 'bool';
     }
-    elseif(preg_match(("/int@[0-9]+/"), $arg_content)) {
+    elseif(preg_match(("/int@[-]?[0-9]+$/"), $arg_content)) {
         return 'int';
     }
-    elseif(preg_match(("/(int|string|bool)/"), $arg_content)) {
-        return 'type';
+    elseif(preg_match(("/nil@nil$/"), $arg_content)) {
+        return 'nil';
     }
-    elseif(preg_match(("/[a-zA-Z#$&*][a-zA-Z#$&*0-9]*/"), $arg_content)) {
+    elseif(preg_match(("/(int|string|bool|nil)$/"), $arg_content)) {
+        return 'type';
+    }    
+    elseif(preg_match(("/[a-zA-Z_$&%*!?-][a-zA-Z_$&%*!?0-9-]*$/"), $arg_content)) {
         return 'label';
     }    
     else {
@@ -260,6 +273,7 @@ function arg_text_element($arg_content) {
         case 'var':
         case 'label':
         case 'type':
+        case 'nil';
             return $arg_content;
             break;
         default:
@@ -270,22 +284,23 @@ function arg_text_element($arg_content) {
 }
 
 function is_valid_var($var_n) {
-    return  preg_match(("/(LF|GF|TF)@[a-zA-Z#$&*][a-zA-Z#$&*0-9]*/"), $var_n);
+    return  preg_match(("/(LF|GF|TF)@[a-zA-Z_$&%*!?-][a-zA-Z_$&%*!?0-9-]*$/"), $var_n);
 }
 
 function is_valid_symb($symb_n) {
-    return preg_match(("/(LF|GF|TF)@[a-zA-Z#$&*\][a-zA-Z#$&*0-9]*/"), $symb_n) |
+    return preg_match(("/(LF|GF|TF)@[a-zA-Z_$&%*!?-][a-zA-Z_$&%*!?0-9-]*$/"), $symb_n) |
            preg_match(("/string@*/"), $symb_n) |
-           preg_match(("/bool@(true|false)/"), $symb_n) |
-           preg_match(("/int@[0-9]+/"), $symb_n);
+           preg_match(("/bool@(true|false)$/"), $symb_n) |
+           preg_match(("/int@[-]?[0-9]+$/"), $symb_n) |
+           preg_match(("/nil@nil$/"), $symb_n);
 }
 
 function is_valid_label($label_n) {
-    return  preg_match(("/[a-zA-Z#$&*][a-zA-Z#$&*0-9]*/"), $label_n);
+    return  preg_match(("/[a-zA-Z_$&%*!?-][a-zA-Z_$&%*!?0-9-]*$/"), $label_n);
 }
 
 function is_valid_type($type_n) {
-    return  preg_match(("/(int|string|bool)/"), $type_n);
+    return  preg_match(("/(int|string|bool|nil)$/"), $type_n);
 }
 
 ?>
