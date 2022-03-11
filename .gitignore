@@ -350,4 +350,4 @@ MigrationBackup/
 .ionide/
 
 # For is_it_ok.sh
-yo
+test_ok
