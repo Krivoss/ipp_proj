@@ -42,6 +42,10 @@ function remove_comments($line) {
     return $line;
 }
 
+function xmlEscape($string) {
+    return str_replace(array('&', '<', '>', '\'', '"'), array('&amp;', '&lt;', '&gt;', '&apos;', '&quot;'), $string);
+}
+
 function read_input() {
     $header = false;
     $programXML = new SimpleXMLElement("<program></program>");
@@ -274,11 +278,11 @@ function arg_text_element($arg_content) {
         case 'label':
         case 'type':
         case 'nil';
-            return $arg_content;
+            return xmlEscape($arg_content);
             break;
         default:
             $pos = strpos($arg_content, "@");
-            return substr($arg_content, $pos + 1, strlen($arg_content) - $pos);
+            return xmlEscape(substr($arg_content, $pos + 1, strlen($arg_content) - $pos));
             break;            
     }
 }
