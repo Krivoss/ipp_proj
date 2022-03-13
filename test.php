@@ -58,10 +58,9 @@ function parser_test() {
 
         $expected_rc = file_get_contents($file.".rc");
 
-        $diff_command = "java -jar jexamxml.jar temp.out ".$file.".out";
+        $diff_command = "java -jar jexamxml.jar temp.out ".$file.".out /dev/null /D options";
         exec($diff_command, $out, $compare_ret);
         if($parse_ret != $expected_rc || ($parse_ret == 0 && $compare_ret != 0)) {
-            # echo($file."\n");
             $failed++;
             array_push($failed_tests, $file);
         }
