@@ -9,4 +9,4 @@ test_ok1: pack
 	./is_it_ok.sh xkriva30.zip test_ok 1
 	
 clean:
-	rm -rf xkriva30.zip
+	rm -rf xkriva30.zip temp*
