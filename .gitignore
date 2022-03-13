@@ -354,3 +354,6 @@ test_ok
 
 # For testing 
 temp*
+
+# zip files
+*.zip
