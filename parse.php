@@ -251,6 +251,10 @@ function typeofarg($arg_content) {
         return 'var';
     }
     elseif(preg_match(("/^string@\S*$/"), $arg_content)) {
+        if(escape_seq_invalidity($arg_content)) {
+            fwrite(STDERR, "INVALID ESCAPE SEQUENCE ".$arg_content."\n");
+            exit(23);
+        }
         return 'string';
     }
     elseif(preg_match(("/^bool@(true|false)$/"), $arg_content)) {
@@ -286,6 +290,10 @@ function arg_text_element($arg_content) {
             return xmlEscape(substr($arg_content, $pos + 1, strlen($arg_content) - $pos));
             break;            
     }
+}
+
+function escape_seq_invalidity($str) {
+    return (preg_match('/\\\\\d{0,2}(\D|$)+/', $str));
 }
 
 function is_valid_var($var_n) {

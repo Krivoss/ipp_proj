@@ -89,16 +89,6 @@ function get_src_files() {
             array_push($result , $o_info->getPathname());
         }
     }
-
-    $o_dir = new RecursiveDirectoryIterator('./GHtests/GENERATED');
-    $o_iter = new RecursiveIteratorIterator($o_dir);
-
-
-    foreach ($o_iter as $o_info) {
-        if ($o_info->getExtension() == 'src') {
-            array_push($result , $o_info->getPathname());
-        }
-    }
     
     return $result;
 }
