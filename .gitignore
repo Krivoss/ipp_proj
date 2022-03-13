@@ -351,3 +351,6 @@ MigrationBackup/
 
 # For is_it_ok.sh
 test_ok
+
+# For testing 
+temp*

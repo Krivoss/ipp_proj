@@ -58,13 +58,22 @@ function read_input() {
     while($line = fgets(STDIN)) {   
         $line = remove_comments(trim($line, "\n"));
         $line = trim($line, " ");
+        $line = preg_replace('/\s+/', ' ', $line);
         $split = explode(' ', $line);
 
+        if($split[0] == '') {
+            continue;
+        }
+        
         if(!$header) {
             if($line == ".IPPcode22") {
                 $header = true;
-                $programXML->addAttribute('language', $line);
+                $programXML->addAttribute('language', "IPPcode22");
                 continue;
+            }
+            else {
+                fwrite(STDERR, "WRONG OR MISSING HEADER\n");
+                exit(21);
             }
         }
 
@@ -72,9 +81,6 @@ function read_input() {
         $instruction;
         if (in_array($split[0], $instruction_list)) {
             $instruction = add_instruction($programXML, $split[0], $instr_order);
-        }
-        elseif ($split[0] == '') {
-            continue;
         }
         else {
             fwrite(STDERR, "WRONG OR UNKWOWN INSTRUCTION ".$split[0]."\n");
@@ -88,6 +94,7 @@ function read_input() {
             case 'INT2CHAR':
             case 'STRLEN':
             case 'TYPE':
+            case 'NOT':
                 if(count($split) != 3) {
                     wrong_num_operands(strtoupper($split[0]));
                 }
@@ -156,12 +163,11 @@ function read_input() {
             case 'SUB':
             case 'MUL':
             case 'IDIV':
-            case 'LG':
+            case 'LT':
             case 'GT':
             case 'EQ':
             case 'AND':
             case 'OR':
-            case 'NOT':
             case 'STRI2INT':
             case 'CONCAT':
             case 'GETCHAR':
@@ -209,10 +215,6 @@ function read_input() {
         }
         $instr_order++;
     }
-    if(!$header) {
-        fwrite(STDERR, "WRONG OR MISSING HEADER\n");
-        exit(21);
-    }
     // formating 
     $doc = new DOMDocument();
     $doc->loadXML($programXML->asXML());
@@ -245,25 +247,25 @@ function add_arg($instruction, $arg_num, $arg_content) {
 }
 
 function typeofarg($arg_content) {
-    if(preg_match(("/(LF|GF|TF)@[a-zA-Z_$&%*!?-][a-zA-Z_$&%*!?0-9-]*$/"), $arg_content)) {
+    if(preg_match(("/^(LF|GF|TF)@[a-zA-Z_$&%*!?-][a-zA-Z_$&%*!?0-9-]*$/"), $arg_content)) {
         return 'var';
     }
-    elseif(preg_match(("/string@*/"), $arg_content)) {
+    elseif(preg_match(("/^string@\S*$/"), $arg_content)) {
         return 'string';
     }
-    elseif(preg_match(("/bool@(true|false)$/"), $arg_content)) {
+    elseif(preg_match(("/^bool@(true|false)$/"), $arg_content)) {
         return 'bool';
     }
-    elseif(preg_match(("/int@[-]?[0-9]+$/"), $arg_content)) {
+    elseif(preg_match(("/^int@[+-]?[0-9]+$/"), $arg_content)) {
         return 'int';
     }
-    elseif(preg_match(("/nil@nil$/"), $arg_content)) {
+    elseif(preg_match(("/^nil@nil$/"), $arg_content)) {
         return 'nil';
     }
-    elseif(preg_match(("/(int|string|bool|nil)$/"), $arg_content)) {
+    elseif(preg_match(("/^(int|string|bool|nil)$/"), $arg_content)) {
         return 'type';
     }    
-    elseif(preg_match(("/[a-zA-Z_$&%*!?-][a-zA-Z_$&%*!?0-9-]*$/"), $arg_content)) {
+    elseif(preg_match(("/^[a-zA-Z_$&%*!?-][a-zA-Z_$&%*!?0-9-]*$/"), $arg_content)) {
         return 'label';
     }    
     else {
@@ -277,7 +279,6 @@ function arg_text_element($arg_content) {
         case 'var':
         case 'label':
         case 'type':
-        case 'nil';
             return xmlEscape($arg_content);
             break;
         default:
@@ -288,23 +289,23 @@ function arg_text_element($arg_content) {
 }
 
 function is_valid_var($var_n) {
-    return  preg_match(("/(LF|GF|TF)@[a-zA-Z_$&%*!?-][a-zA-Z_$&%*!?0-9-]*$/"), $var_n);
+    return  preg_match(("/^(LF|GF|TF)@[a-zA-Z_$&%*!?-][a-zA-Z_$&%*!?0-9-]*$/"), $var_n);
 }
 
 function is_valid_symb($symb_n) {
-    return preg_match(("/(LF|GF|TF)@[a-zA-Z_$&%*!?-][a-zA-Z_$&%*!?0-9-]*$/"), $symb_n) |
-           preg_match(("/string@*/"), $symb_n) |
-           preg_match(("/bool@(true|false)$/"), $symb_n) |
-           preg_match(("/int@[-]?[0-9]+$/"), $symb_n) |
-           preg_match(("/nil@nil$/"), $symb_n);
+    return is_valid_var($symb_n) |
+           preg_match(("/^string@\S*$/"), $symb_n) |
+           preg_match(("/^int@[+-]?[0-9]+$/"), $symb_n) |
+           preg_match(("/^bool@(true|false)$/"), $symb_n) |
+           preg_match(("/^nil@nil$/"), $symb_n);
 }
 
 function is_valid_label($label_n) {
-    return  preg_match(("/[a-zA-Z_$&%*!?-][a-zA-Z_$&%*!?0-9-]*$/"), $label_n);
+    return  preg_match(("/^[a-zA-Z_$&%*!?-][a-zA-Z_$&%*!?0-9-]*$/"), $label_n);
 }
 
 function is_valid_type($type_n) {
-    return  preg_match(("/(int|string|bool|nil)$/"), $type_n);
+    return  preg_match(("/^(int|string|bool|nil)$/"), $type_n);
 }
 
 ?>
