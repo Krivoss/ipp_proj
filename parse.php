@@ -1,5 +1,14 @@
 <?php
-# init_set('display_errors', 'stderr');
+/**
+* @file parse.php
+* @author Jakub Krivanek (xkriva30), FIT
+* @date March 2022 (academic year 2021/2022)
+* @brief Parses source code IPPcode22 from std input, checks 
+*        lexical and syntactic correctness and prints to std output
+*        the XML representation of the program
+*/
+
+ini_set('display_errors', 'stderr');
 
 arg_check();
 
@@ -14,7 +23,7 @@ function arg_check() {
         switch ($option) {
             case 'h':
             case 'help':
-                echo("Usage: php8.1 parser.php [options] <inputFile\n");
+                echo("Usage: php8.1 parse.php [options] <inputFile >outputFile\n");
                 exit(0);
                 break;
             default:
@@ -33,6 +42,10 @@ function remove_comments($line) {
     return $line;
 }
 
+function xmlEscape($string) {
+    return str_replace(array('&', '<', '>', '\'', '"'), array('&amp;', '&lt;', '&gt;', '&apos;', '&quot;'), $string);
+}
+
 function read_input() {
     $header = false;
     $programXML = new SimpleXMLElement("<program></program>");
@@ -45,44 +58,55 @@ function read_input() {
     while($line = fgets(STDIN)) {   
         $line = remove_comments(trim($line, "\n"));
         $line = trim($line, " ");
+        $line = preg_replace('/\s+/', ' ', $line);
         $split = explode(' ', $line);
 
+        if($split[0] == '') {
+            continue;
+        }
+        
         if(!$header) {
             if($line == ".IPPcode22") {
                 $header = true;
-                $programXML->addAttribute('language', $line);
+                $programXML->addAttribute('language', "IPPcode22");
                 continue;
+            }
+            else {
+                fwrite(STDERR, "WRONG OR MISSING HEADER\n");
+                exit(21);
             }
         }
 
+        $split[0] = strtoupper($split[0]);
         $instruction;
-        if (in_array(strtoupper($split[0]), $instruction_list)) {
+        if (in_array($split[0], $instruction_list)) {
             $instruction = add_instruction($programXML, $split[0], $instr_order);
-        }
-        elseif ($split[0] == '') {
-            continue;
         }
         else {
             fwrite(STDERR, "WRONG OR UNKWOWN INSTRUCTION ".$split[0]."\n");
             exit(22);
         }
 
-        switch(strtoupper($split[0])) {
+        
+        switch($split[0]) {
+            // <var> <symb>
             case 'MOVE':
             case 'INT2CHAR':
             case 'STRLEN':
             case 'TYPE':
+            case 'NOT':
                 if(count($split) != 3) {
                     wrong_num_operands(strtoupper($split[0]));
                 }
                 if(is_valid_var($split[1]) && is_valid_symb($split[2])) {
-                    add_arg($instruction, '1', $split[1], 'var');
-                    add_arg($instruction, '2', $split[2], 'symb');
+                    add_arg($instruction, '1', $split[1]);
+                    add_arg($instruction, '2', $split[2]);
                 }
                 else {
                     wrong_operands($split[0]);
                 }
                 break;
+            // no operands
             case 'CREATEFRAME':
             case 'PUSHFRAME':
             case 'POPFRAME':
@@ -92,18 +116,20 @@ function read_input() {
                     wrong_num_operands(strtoupper($split[0]));
                 }
                 break;
+            // <var>
             case 'DEFVAR':
             case 'POPS':
                 if(count($split) != 2) {
                     wrong_num_operands(strtoupper($split[0]));
                 }
                 if(is_valid_var($split[1])) {
-                    add_arg($instruction, '1', $split[1], 'var');
+                    add_arg($instruction, '1', $split[1]);
                 }
                 else {
                     wrong_operands($split[0]);
                 }
                 break;
+            // <label>
             case 'CALL':
             case 'LABEL':
             case 'JUMP':
@@ -111,12 +137,13 @@ function read_input() {
                     wrong_num_operands(strtoupper($split[0]));
                 }
                 if(is_valid_label($split[1])) {
-                    add_arg($instruction, '1', $split[1], 'label');
+                    add_arg($instruction, '1', $split[1]);
                 }
                 else {
                     wrong_operands($split[0]);
                 }
                 break;
+            // <symb>
             case 'PUSHS':
             case 'WRITE':
             case 'EXIT':
@@ -125,22 +152,22 @@ function read_input() {
                     wrong_num_operands(strtoupper($split[0]));
                 }
                 if (is_valid_symb($split[1])) {
-                    add_arg($instruction, '1', $split[1], 'symb');
+                    add_arg($instruction, '1', $split[1]);
                 }
                 else {
                     wrong_operands($split[0]);
                 }
                 break;
+            // <var> <symb_1> <symb_2>
             case 'ADD':
             case 'SUB':
             case 'MUL':
             case 'IDIV':
-            case 'LG':
+            case 'LT':
             case 'GT':
             case 'EQ':
             case 'AND':
             case 'OR':
-            case 'NOT':
             case 'STRI2INT':
             case 'CONCAT':
             case 'GETCHAR':
@@ -149,35 +176,37 @@ function read_input() {
                     wrong_num_operands(strtoupper($split[0]));
                 }
                 if (is_valid_var($split[1]) && is_valid_symb($split[2]) && is_valid_symb($split[3])) {
-                    add_arg($instruction, '1', $split[1], 'var');
-                    add_arg($instruction, '2', $split[2], 'symb');
-                    add_arg($instruction, '3', $split[3], 'symb');
-                }
-                else {
-                    wrong_operands($split[0]);
-                }
-                break;    
-            case 'READ':
-                if(count($split) != 3) {
-                    wrong_num_operands(strtoupper($split[0]));
-                }
-                if(is_valid_var($split[1]) && is_valid_type($split[2])) {
-                    add_arg($instruction, '1', $split[1], 'var');
-                    add_arg($instruction, '2', $split[2], 'type');
+                    add_arg($instruction, '1', $split[1]);
+                    add_arg($instruction, '2', $split[2]);
+                    add_arg($instruction, '3', $split[3]);
                 }
                 else {
                     wrong_operands($split[0]);
                 }
                 break;
+            // <var> <type>    
+            case 'READ':
+                if(count($split) != 3) {
+                    wrong_num_operands(strtoupper($split[0]));
+                }
+                if(is_valid_var($split[1]) && is_valid_type($split[2])) {
+                    add_arg($instruction, '1', $split[1]);
+                    add_arg($instruction, '2', $split[2]);
+                }
+                else {
+                    wrong_operands($split[0]);
+                }
+                break;
+            // <label> <symb_1> <symb_2>
             case 'JUMPIFEQ':
             case 'JUMPIFNEQ':
                 if(count($split) != 4) {
                     wrong_num_operands(strtoupper($split[0]));
                 }
                 if (is_valid_label($split[1]) && is_valid_symb($split[2]) && is_valid_symb($split[3])) {
-                    add_arg($instruction, '1', $split[1], 'label');
-                    add_arg($instruction, '2', $split[2], 'symb');
-                    add_arg($instruction, '3', $split[3], 'symb');
+                    add_arg($instruction, '1', $split[1]);
+                    add_arg($instruction, '2', $split[2]);
+                    add_arg($instruction, '3', $split[3]);
                 }
                 else {
                     wrong_operands($split[0]);
@@ -185,10 +214,6 @@ function read_input() {
                 break;
         }
         $instr_order++;
-    }
-    if(!$header) {
-        fwrite(STDERR, "WRONG OR MISSING HEADER\n");
-        exit(21);
     }
     // formating 
     $doc = new DOMDocument();
@@ -215,30 +240,72 @@ function add_instruction($programXML, $instr_n, $order) {
     return $instruction;
 }
 
-function add_arg($instruction, $arg_num, $arg_content, $type) {
-    $arg = $instruction->addChild('arg'.$arg_num, $arg_content);
-    $arg->addAttribute('type', $type);
+function add_arg($instruction, $arg_num, $arg_content) {
+    $arg = $instruction->addChild('arg'.$arg_num, arg_text_element($arg_content));
+    $arg->addAttribute('type', typeofarg($arg_content));
     return $arg;
 }
 
+function typeofarg($arg_content) {
+    if(preg_match(("/^(LF|GF|TF)@[a-zA-Z_$&%*!?-][a-zA-Z_$&%*!?0-9-]*$/"), $arg_content)) {
+        return 'var';
+    }
+    elseif(preg_match(("/^string@\S*$/"), $arg_content)) {
+        return 'string';
+    }
+    elseif(preg_match(("/^bool@(true|false)$/"), $arg_content)) {
+        return 'bool';
+    }
+    elseif(preg_match(("/^int@[+-]?[0-9]+$/"), $arg_content)) {
+        return 'int';
+    }
+    elseif(preg_match(("/^nil@nil$/"), $arg_content)) {
+        return 'nil';
+    }
+    elseif(preg_match(("/^(int|string|bool|nil)$/"), $arg_content)) {
+        return 'type';
+    }    
+    elseif(preg_match(("/^[a-zA-Z_$&%*!?-][a-zA-Z_$&%*!?0-9-]*$/"), $arg_content)) {
+        return 'label';
+    }    
+    else {
+        exit(99);
+    }
+}
+
+function arg_text_element($arg_content) {
+    $arg_type = typeofarg($arg_content);
+    switch($arg_type) {
+        case 'var':
+        case 'label':
+        case 'type':
+            return xmlEscape($arg_content);
+            break;
+        default:
+            $pos = strpos($arg_content, "@");
+            return xmlEscape(substr($arg_content, $pos + 1, strlen($arg_content) - $pos));
+            break;            
+    }
+}
+
 function is_valid_var($var_n) {
-    return  preg_match(("/(LF|GF|TF)@[a-zA-Z#$&*][a-zA-Z#$&*0-9]*/"), $var_n);
+    return  preg_match(("/^(LF|GF|TF)@[a-zA-Z_$&%*!?-][a-zA-Z_$&%*!?0-9-]*$/"), $var_n);
 }
 
 function is_valid_symb($symb_n) {
-    return preg_match(("/(LF|GF|TF)@[a-zA-Z#$&*\][a-zA-Z#$&*0-9]*/"), $symb_n) |
-           preg_match(("/string@*/"), $symb_n) |
-           preg_match(("/bool@(true|false)/"), $symb_n) |
-           preg_match(("/int@[0-9]+/"), $symb_n);
+    return is_valid_var($symb_n) |
+           preg_match(("/^string@\S*$/"), $symb_n) |
+           preg_match(("/^int@[+-]?[0-9]+$/"), $symb_n) |
+           preg_match(("/^bool@(true|false)$/"), $symb_n) |
+           preg_match(("/^nil@nil$/"), $symb_n);
 }
 
 function is_valid_label($label_n) {
-    return  preg_match(("/[a-zA-Z#$&*][a-zA-Z#$&*0-9]*/"), $label_n);
+    return  preg_match(("/^[a-zA-Z_$&%*!?-][a-zA-Z_$&%*!?0-9-]*$/"), $label_n);
 }
 
 function is_valid_type($type_n) {
-    return  preg_match(("/(int|string|bool)/"), $type_n);
+    return  preg_match(("/^(int|string|bool|nil)$/"), $type_n);
 }
-
 
 ?>
