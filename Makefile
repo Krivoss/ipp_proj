@@ -3,7 +3,7 @@
 all: pack
 
 pack: clean
-	zip -r xkriva30.zip parse.php test.php interpret.py readme1.md
+	zip -r xkriva30.zip parse.php test.php interpret.py readme1.pdf
 
 test_ok1: pack
 	./is_it_ok.sh xkriva30.zip test_ok 1
