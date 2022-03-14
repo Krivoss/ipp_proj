@@ -56,24 +56,15 @@ function parser_test() {
         exec($command, $out, $parse_ret);
 
         $expected_rc = file_get_contents($file.".rc");
-        
-        if($parse_ret != $expected_rc) {
+      
+        $diff_command = "java -jar jexamxml.jar temp.out ".$file.".out /dev/null /D options";
+        exec($diff_command, $out, $compare_ret);
+        if($parse_ret != $expected_rc || ($parse_ret == 0 && $compare_ret != 0)) {
             $failed++;
             array_push($failed_tests, $file);
         }
-        elseif ($parse_ret != 0) {
+        else { 
             $passed++;
-        }
-        else {            
-            $diff_command = "java -jar jexamxml.jar temp.out ".$file.".out /dev/null options";
-            exec($diff_command, $out, $compare_ret);
-            if($compare_ret != 0) {
-                $failed++;
-                array_push($failed_tests, $file);
-            }
-            else {
-                $passed++;
-            }
         }
     }
     echo("TEST RESULTS:\n\t\033[01;32mPASSED: ".$passed."\033[0m\n\t\033[01;31mFAILED: ".$failed."\033[0m\n");
