@@ -230,22 +230,15 @@ function process_instruction($instruction, $split) {
     }
 }
 
+/**
+ * Creates XML output
+ */
 function create_doc($programXML) {
     $doc = new DOMDocument();
     $doc->loadXML($programXML->asXML());
     $doc->encoding='UTF-8';
     $doc->formatOutput = true;
     echo $doc->saveXML();
-}
-
-function wrong_num_operands($instr_n) {
-    fwrite(STDERR, "WRONG NUMBER OF OPERANDS IN ".$instr_n."\n");
-    exit(23);
-}
-
-function wrong_operands($instr_n) {
-    fwrite(STDERR, "WRONG ".$instr_n." OPERANDS\n");
-    exit(23);
 }
 
 function add_instruction($programXML, $instr_n, $order) {
@@ -314,9 +307,15 @@ function arg_text_element($arg_content) {
     }
 }
 
+/**
+ * Checks invalidity of escape sequences.
+ * Returns true if there is backslash with two or less digets following it
+ */
 function escape_seq_invalidity($str) {
     return (preg_match('/\\\\\d{0,2}(\D|$)+/', $str));
 }
+
+// Functions for recognition of type of operand
 
 // <var>
 function is_valid_var($var_n) {
@@ -340,5 +339,20 @@ function is_valid_label($label_n) {
 // <type>
 function is_valid_type($type_n) {
     return  preg_match(("/^(int|string|bool|nil)$/"), $type_n);
+}
+
+/**
+ * Functions for exiting program with correct error message
+ * and return code 
+*/ 
+
+function wrong_num_operands($instr_n) {
+    fwrite(STDERR, "WRONG NUMBER OF OPERANDS IN ".$instr_n."\n");
+    exit(23);
+}
+
+function wrong_operands($instr_n) {
+    fwrite(STDERR, "WRONG ".$instr_n." OPERANDS\n");
+    exit(23);
 }
 ?>
