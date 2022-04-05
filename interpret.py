@@ -2,6 +2,7 @@ import sys
 import re
 import os.path
 import xml.etree.ElementTree as ET
+import operator
 
 def file_validity(file_str, type):
     path = os.path.normpath(file_str)
@@ -72,11 +73,23 @@ class prog_arguments:
             file = sys.stdin
         return file
 
+class variable:
+    def __init__(self):
+        self._value = None
+    
+    def get_value(self):
+        return self._value
+
+    def set_value(self, value):
+        self._value = value
+
 class argument:
     def __init__(self, type : str, content):
         self._type = type
         self._content = content
 
+    def get_content(self):
+        return self._content
 
 class instruction:
     def __init__(self, order : int, opcode : str = None):
@@ -203,47 +216,92 @@ class instr_read(two_arg_instr):
         self._opcode = "READ"
 
 # three arguments
-class three_arg_instr(instruction):
+class three_arg_instr(instruction):    
     def __init__(self, order : int, arg1 : argument, arg2 : argument, arg3 : argument):
         super().__init__(order)       
         self._arg1 = arg1
         self._arg2 = arg2
         self._arg3 = arg3
+        self._result = None
+        self._instr_operator = None
+
+    def calc(self, op1, op2, myoperator):
+        # op1, op2 = int(op1), int(op2)
+        try:
+            res = myoperator(op1, op2)
+        except TypeError:
+            error_exit_on_instruction(self._order, self._opcode, f"wrong operand types - {op1} {op2}", 53)
+        except ZeroDivisionError:
+            error_exit_on_instruction(self._order, self._opcode, "zero devision", 57)
+        print(res)
+        self._result = res
+    
+    def execute(self):
+        self.calc(self._arg2.get_content(), self._arg3.get_content())
 
 class instr_add(three_arg_instr):
     def __init__(self, order : int, arg1 : argument, arg2 : argument, arg3 : argument):
         super().__init__(order, arg1, arg2, arg3)
         self._opcode = "ADD"
+        self._instr_operator = operator.add
+
+    def calc(self, op1, op2):
+        super().calc(op1, op2, self._instr_operator)
+    
 
 class instr_sub(three_arg_instr):
     def __init__(self, order : int, arg1 : argument, arg2 : argument, arg3 : argument):
         super().__init__(order, arg1, arg2, arg3)
         self._opcode = "SUB"
+        self._instr_operator = operator.sub
+
+    def calc(self, op1, op2):
+        super().calc(op1, op2, self._instr_operator)
 
 class instr_mul(three_arg_instr):
     def __init__(self, order : int, arg1 : argument, arg2 : argument, arg3 : argument):
         super().__init__(order, arg1, arg2, arg3)
         self._opcode = "MUL"
+        self._instr_operator = operator.mul
+
+    def calc(self, op1, op2):
+        super().calc(op1, op2, self._instr_operator)
 
 class instr_idiv(three_arg_instr):
     def __init__(self, order : int, arg1 : argument, arg2 : argument, arg3 : argument):
         super().__init__(order, arg1, arg2, arg3)
         self._opcode = "IDIV"
+        self._instr_operator = operator.truediv
+
+    def calc(self, op1, op2):
+        super().calc(op1, op2, self._instr_operator)
 
 class instr_lt(three_arg_instr):
     def __init__(self, order : int, arg1 : argument, arg2 : argument, arg3 : argument):
         super().__init__(order, arg1, arg2, arg3)
         self._opcode = "LT"
+        self._instr_operator = operator.lt
+
+    def calc(self, op1, op2):
+        super().calc(op1, op2, self._instr_operator)
 
 class instr_gt(three_arg_instr):
     def __init__(self, order : int, arg1 : argument, arg2 : argument, arg3 : argument):
         super().__init__(order, arg1, arg2, arg3)
         self._opcode = "GT"
+        self._instr_operator = operator.gt
+
+    def calc(self, op1, op2):
+        super().calc(op1, op2, self._instr_operator)
 
 class instr_eq(three_arg_instr):
     def __init__(self, order : int, arg1 : argument, arg2 : argument, arg3 : argument):
         super().__init__(order, arg1, arg2, arg3)
         self._opcode = "EQ"
+        self._instr_operator = operator.eq
+
+    def calc(self, op1, op2):
+        super().calc(op1, op2, self._instr_operator)
 
 class instr_and(three_arg_instr):
     def __init__(self, order : int, arg1 : argument, arg2 : argument, arg3 : argument):
@@ -255,10 +313,20 @@ class instr_or(three_arg_instr):
         super().__init__(order, arg1, arg2, arg3)
         self._opcode = "OR"
 
+# OVERIDE
 class instr_stri2int(three_arg_instr):
     def __init__(self, order : int, arg1 : argument, arg2 : argument, arg3 : argument):
         super().__init__(order, arg1, arg2, arg3)
         self._opcode = "STRI2INT"
+
+    def calc(self, op1, op2):
+        try:
+            res = ord(op1[op2])
+            self._result = res
+        except TypeError:
+            error_exit_on_instruction(self._order, self._opcode, f"wrong operand types - {op1} {op2}", 53)
+        except IndexError:
+            error_exit_on_instruction(self._order, self._opcode, "index out of range", 58)
 
 class instr_concat(three_arg_instr):
     def __init__(self, order : int, arg1 : argument, arg2 : argument, arg3 : argument):
@@ -287,84 +355,60 @@ class instr_jumpifneq(three_arg_instr):
 
 class factory:
     @classmethod
-    def get_instruction(cls, order : int, str_opcode : str,
+    def get_instruction(cls, order : int, opcode : str,
                 arg1 : argument = None, arg2 : argument = None, arg3 : argument = None):
-        # no arguments
-        if str_opcode == 'CREATEFRAME':
-            return instr_createframe(order)
-        elif str_opcode == 'PUSHFRAME':
-            return instr_pushframe(order)
-        elif str_opcode == 'POPFRAME':
-            return instr_popframe(order)
-        elif str_opcode == 'RETURN':
-            return instr_return(order)
-        elif str_opcode == 'BREAK':
-            return instr_break(order)
-        # one argument
-        elif str_opcode == 'DEFVAR':
-            return instr_defvar(order, arg1)
-        elif str_opcode == 'POPS':
-            return instr_pops(order, arg1)
-        elif str_opcode == 'PUSHS':
-            return instr_pushs(order, arg1)
-        elif str_opcode == 'WRITE':
-            return instr_write(order, arg1)
-        elif str_opcode == 'EXIT':
-            return instr_exit(order, arg1)
-        elif str_opcode == 'DPRINT':
-            return instr_dprint(order, arg1)
-        elif str_opcode == 'CALL':
-            return instr_call(order, arg1)
-        elif str_opcode == 'LABEL':
-            return instr_label(order, arg1)
-        elif str_opcode == 'JUMP':
-            return instr_jump(order, arg1)
-        # two arguments
-        elif str_opcode == 'MOVE':
-            return instr_move(order, arg1, arg2)
-        elif str_opcode == 'INT2CHAR':
-            return instr_int2char(order, arg1, arg2)
-        elif str_opcode == 'STRLEN':
-            return instr_strlen(order, arg1, arg2)
-        elif str_opcode == 'TYPE':
-            return instr_type(order, arg1, arg2)
-        elif str_opcode == 'NOT':
-            return instr_not(order, arg1, arg2)
-        elif str_opcode == 'READ':
-            return instr_read(order, arg1, arg2)
-        # three arguments
-        elif str_opcode == 'ADD':
-            return instr_add(order, arg1, arg2, arg3)
-        elif str_opcode == 'SUB':
-            return instr_sub(order, arg1, arg2, arg3)
-        elif str_opcode == 'MUL':
-            return instr_mul(order, arg1, arg2, arg3)
-        elif str_opcode == 'IDIV':
-            return instr_idiv(order, arg1, arg2, arg3)
-        elif str_opcode == 'LT':
-            return instr_lt(order, arg1, arg2, arg3)
-        elif str_opcode == 'GT':
-            return instr_gt(order, arg1, arg2, arg3)
-        elif str_opcode == 'EQ':
-            return instr_eq(order, arg1, arg2, arg3)
-        elif str_opcode == 'AND':
-            return instr_and(order, arg1, arg2, arg3)
-        elif str_opcode == 'OR':
-            return instr_or(order, arg1, arg2, arg3)
-        elif str_opcode == 'STRI2INT':
-            return instr_stri2int(order, arg1, arg2, arg3)
-        elif str_opcode == 'CONCAT':
-            return instr_concat(order, arg1, arg2, arg3)
-        elif str_opcode == 'GETCHAR':
-            return instr_getchar(order, arg1, arg2, arg3)
-        elif str_opcode == 'SETCHAR':
-            return instr_setchar(order, arg1, arg2, arg3)
-        elif str_opcode == 'JUMPIFEQ':
-            return instr_jumpifeq(order, arg1, arg2, arg3)
-        elif str_opcode == 'JUMPIFNEQ':
-            return instr_jumpifneq(order, arg1, arg2, arg3)
+        no_arguments = {
+            'CREATEFRAME' : instr_createframe,
+            'PUSHFRAME' : instr_pushframe,
+            'RETURN' : instr_return,
+            'BREAK' : instr_break
+        }
+        one_argument = {
+            'DEFVAR' : instr_defvar,
+            'POPS' : instr_pops,
+            'PUSHS' : instr_pushs,
+            'WRITE' : instr_write,
+            'EXIT' : instr_exit,
+            'DPRINT' : instr_dprint,
+            'CALL' : instr_call,
+            'LABEL' : instr_label,
+            'JUMP' : instr_label
+        }
+        two_arguments = {
+            'MOVE':instr_move,
+            'INT2CHAR' : instr_int2char,
+            'STRLEN' : instr_strlen,
+            'TYPE' : instr_type,
+            'NOT' : instr_not,
+            'READ' : instr_read
+        }
+        three_arguments = {
+            'ADD' : instr_add,
+            'SUB' : instr_sub,
+            'MUL' : instr_mul,
+            'IDIV' : instr_idiv,
+            'LT' : instr_lt,
+            'GT' : instr_gt,
+            'EQ' : instr_eq,
+            'AND' : instr_and,
+            'OR' : instr_or,
+            'STRI2INT' : instr_stri2int,
+            'CONCAT' : instr_concat,
+            'GETCHAR' : instr_getchar,
+            'SETCHAR' : instr_setchar,
+            'JUMPIFEQ' : instr_jumpifeq,
+            'JUMPIFNEQ' : instr_jumpifneq
+        }
+        if opcode in no_arguments:
+            return one_argument[opcode](order)
+        elif opcode in one_argument:
+            return one_argument[opcode](order, arg1)
+        elif opcode in two_arguments:
+            return two_arguments[opcode](order, arg1, arg2)
+        elif opcode in three_arguments:
+            return three_arguments[opcode](order, arg1, arg2, arg3)
         else:
-            print(f"INTERNAL ERROR: factory received invalid opcode {str_opcode}", file=sys.stderr)
+            print(f"INTERNAL ERROR: factory received invalid opcode {opcode}", file=sys.stderr)
             exit(99)
 
     @classmethod
@@ -391,9 +435,12 @@ def main():
             for i in range(1,4):
                 arg = instr.findall(f"./arg{i}")
                 if len(arg) > 1:
-                    error_exit_on_instruction(order, opcode, f"instruction has more arguments with the same number - arg{i}", 32)
+                    error_exit_on_instruction(order, opcode, 
+                        f"instruction has more arguments with the same number - arg{i}", 32)
                 if arg:
-                    args[f"arg{i}"] = factory.get_argument(arg[0], order, opcode)            
+                    args[f"arg{i}"] = factory.get_argument(arg[0], order, opcode)
             made_i = factory.get_instruction(order, opcode, **args)
+            if(len(args) > 2):
+                made_i.execute()
 if __name__=="__main__":
     main()
