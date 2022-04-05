@@ -16,6 +16,10 @@ def print_help():
               "  --source SOURCE  Source file with XML of source code\n"
               "  --input INPUT    File with input for interpret", file=sys.stderr)  
 
+def error_exit_on_instruction(order, instruction, error_message, error_code):
+    print(f"Error: instruction n.{order} {instruction}: {error_message}", file=sys.stderr)
+    exit(error_code)
+
 class prog_arguments:
     def __init__(self):
         self._will_print_help = False
@@ -78,6 +82,7 @@ class instruction:
     def __init__(self, order : int, opcode : str = None):
         self._order = order
         self._opcode = opcode
+    
 
 # no arguments
 class no_operands_instr(instruction):
@@ -362,6 +367,13 @@ class factory:
             print(f"INTERNAL ERROR: factory received invalid opcode {str_opcode}", file=sys.stderr)
             exit(99)
 
+    @classmethod
+    def get_argument(cls, arg, order, opcode):
+        arg_type = arg.get('type')
+        if not arg_type:
+            error_exit_on_instruction(order, opcode, f"argument {arg.tag} has no type atribute", 32)
+        return argument(arg.get('type'), arg.text)   
+
 def args_process():
     args = prog_arguments()
     args.process_args()
@@ -375,12 +387,13 @@ def main():
         for instr in instructions:
             order = instr.get("order")
             opcode = instr.get("opcode")
-            args = []
+            args = {}
             for i in range(1,4):
                 arg = instr.findall(f"./arg{i}")
+                if len(arg) > 1:
+                    error_exit_on_instruction(order, opcode, f"instruction has more arguments with the same number - arg{i}", 32)
                 if arg:
-                    args.append(arg)
-            print(order)
-
+                    args[f"arg{i}"] = factory.get_argument(arg[0], order, opcode)            
+            made_i = factory.get_instruction(order, opcode, **args)
 if __name__=="__main__":
     main()
