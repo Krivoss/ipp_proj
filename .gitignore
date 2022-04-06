@@ -357,6 +357,7 @@ test_ok
 temp*
 input.in
 source.xml
+source-simple.xml
 
 # zip files
 *.zip
