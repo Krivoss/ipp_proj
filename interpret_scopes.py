@@ -2,11 +2,64 @@ import sys
 
 import interpret_fuctions as i_func
 
+class variable:
+    def __init__(self, value = None, var_type = 'nil'):
+        self._value = value
+        self._var_type = var_type
+    
+    def get_value(self):
+        return self._value
+
+    def set_value(self, value):
+        self._value = value
+
+    def get_type(self):
+        return self._var_type
+
+    def set_type(self, var_type):
+        self._var_type = var_type
+    
+    def value_to_print(self):
+        if self._value == True:
+            return 'true'
+        elif self._value == False:
+            return 'false'
+        else:
+            return self._value
+
+class scope:
+    def __init__(self, scope_type):
+        self._var_list = {}
+        self._scope_type = scope_type
+    
+    def set_scope(self, scope_type):
+        self._scope_type = scope_type
+
+    def define_var(self, instr, name):
+        if name in self._var_list:
+            i_func.error_exit_on_instruction(instr.get_order(), instr.get_opcode(), f"{self._scope_type}@{name} already defined", 52)
+        else:
+            self._var_list[name] = variable()
+
+    def get_scope_var(self, instr, name):
+        if name not in self._var_list:
+            i_func.error_exit_on_instruction(instr.get_order(), instr.get_opcode(), f"{self._scope_type}@{name} not defined", 52)
+        else:
+            return self._var_list[name]
+
+    def set_scope_var(self, instr, name, value, var_type):
+        if name not in self._var_list:
+            i_func.error_exit_on_instruction(instr.get_order(), instr.get_opcode(), f"{self._scope_type}@{name} not defined", 52)
+        else:
+            self._var_list[name].set_value(value)
+            self._var_list[name].set_type(var_type)
+
 class program_scopes:
     def __init__(self):
         self._gf_scope = scope('GF')
         self._tf_scope = None
         self._lf_scopes = []
+        self._stack = []
 
     def def_var(self, instr, name):
         scope_prefix = name[:2]
@@ -21,7 +74,7 @@ class program_scopes:
             print("INTERNAL ERROR: scope detection failed", file=sys.stderr)
             exit(99)
 
-    def get_var(self, instr, name):
+    def get_var(self, instr, name) -> variable:
         scope_prefix = name[:2]
         var_name = name[3:]
         if scope_prefix == 'GF':
@@ -34,15 +87,15 @@ class program_scopes:
             print("INTERNAL ERROR: scope detection failed", file=sys.stderr)
             exit(99)
 
-    def set_var(self, instr, name, value):
+    def set_var(self, instr, name, value, value_type):
         scope_prefix = name[:2]
         var_name = name[3:]
         if scope_prefix == 'GF':
-            return self.set_gf_var(instr, var_name, value)
+            return self.set_gf_var(instr, var_name, value, value_type)
         elif scope_prefix == 'LF':
-            return self.set_lf_var(instr, var_name, value)
+            return self.set_lf_var(instr, var_name, value, value_type)
         elif scope_prefix == 'TF':
-            return self.set_tf_var(instr, var_name, value)
+            return self.set_tf_var(instr, var_name, value, value_type)
         else:
             print("INTERNAL ERROR: scope detection failed", file=sys.stderr)
             exit(99)
@@ -66,6 +119,9 @@ class program_scopes:
         else:
             i_func.error_exit_on_instruction(instr.get_order(), instr.get_opcode(), f"popping non existent LF", 52)
 
+    def push_stack(self):
+        self._stack
+        
     def get_lf(self, instr):
         if self._lf_scopes:
             return self._lf_scopes[-1]
@@ -88,11 +144,11 @@ class program_scopes:
     
     def get_lf_var(self, instr, name):
         lf = self.get_lf(instr)
-        return lf.get_var_value(instr, name)        
+        return lf.get_scope_var(instr, name)        
 
-    def set_lf_var(self, instr, name, value):
+    def set_lf_var(self, instr, name, value, value_type):
         lf = self.get_lf(instr)
-        lf.set_var_value(instr, name, value)
+        lf.set_scope_var(instr, name, value, value_type)
 
     # TF VAR
     def def_tf_var(self, instr, name):
@@ -101,11 +157,11 @@ class program_scopes:
     
     def get_tf_var(self, instr, name):
         tf = self.get_tf(instr)
-        return tf.get_var_value(instr, name)        
+        return tf.get_scope_var(instr, name)        
 
-    def set_tf_var(self, instr, name, value):
+    def set_tf_var(self, instr, name, value, value_type):
         tf = self.get_tf(instr)
-        tf.set_var_value(instr, name, value)
+        tf.set_scope_var(instr, name, value, value_type)
 
     # GF VAR
     def def_gf_var(self, instr, name):
@@ -113,44 +169,9 @@ class program_scopes:
 
     def get_gf_var(self, instr, name):
         gf = self.get_gf()
-        return gf.get_var_value(instr, name)
+        return gf.get_scope_var(instr, name)
 
-    def set_gf_var(self, instr, name, value):
+    def set_gf_var(self, instr, name, value, value_type):
         gf = self.get_gf()
-        gf.set_var_value(instr, name, value)
-
-class scope:
-    def __init__(self, scope_type):
-        self._var_list = {}
-        self._scope_type = scope_type
-    
-    def set_scope(self, scope_type):
-        self._scope_type = scope_type
-
-    def define_var(self, instr, name):
-        if name in self._var_list:
-            i_func.error_exit_on_instruction(instr.get_order(), instr.get_opcode(), f"{self._scope_type}@{name} already defined", 52)
-        else:
-            self._var_list[name] = variable()
-
-    def get_var_value(self, instr, name):
-        if name not in self._var_list:
-            i_func.error_exit_on_instruction(instr.get_order(), instr.get_opcode(), f"{self._scope_type}@{name} not defined", 52)
-        else:
-            return self._var_list[name].get_var_value()
-
-    def set_var_value(self, instr, name, value):
-        if name not in self._var_list:
-            i_func.error_exit_on_instruction(instr.get_order(), instr.get_opcode(), f"{self._scope_type}@{name} not defined", 52)
-        else:
-            self._var_list[name].set_var_value(value)
+        gf.set_scope_var(instr, name, value, value_type)
         
-class variable:
-    def __init__(self, value = None):
-        self._value = value
-    
-    def get_var_value(self):
-        return self._value
-
-    def set_var_value(self, value):
-        self._value = value

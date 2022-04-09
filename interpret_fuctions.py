@@ -75,3 +75,12 @@ def args_process():
     args = prog_arguments()
     args.process_args()
     return args
+
+def value_for_print(value):
+    if type(value) == bool:
+        if value == True:
+            return 'true'
+        else:
+            return 'false'
+    else:
+        return value
