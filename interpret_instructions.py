@@ -1,211 +1,8 @@
-import sys
-import re
 import operator
+import sys
 
+import interpret_scopes as i_scopes
 import interpret_fuctions as i_func
-
-class prog_arguments:
-    def __init__(self):
-        self._will_print_help = False
-        self._has_source_file = False
-        self._has_input_file = False
-        self._source_file = '-'
-        self._input_file = '-'     
-
-    def process_args(self):
-        for arg in sys.argv:
-            # -h, --help
-            if arg == '-h' or arg == '--help':
-                self._will_print_help = True
-            # --source=SOURCE
-            source = re.search(r"(?<=--source=)\S+", arg)
-            if source:
-                source = source.group()
-                i_func.file_validity(source, 'source') 
-                self._has_source_file = True
-                self._source_file = source
-            # --input=INPUT
-            input = re.search(r"(?<=--input=)\S+", arg)
-            if input:
-                input = input.group()
-                i_func.file_validity(input, 'input')                   
-                self._has_input_file = True
-                self._input_file = input
-
-        if self._will_print_help:
-            i_func.print_help()
-            exit(0)
-
-        missing_both_files = (not self._has_input_file) and (not self._has_source_file)
-        if missing_both_files:
-            i_func.print_help()
-            print("\nError: one of the arguments --source --input is required", file=sys.stderr)
-            exit(10)
-
-    def get_source_file(self):
-        if self._has_source_file:
-            file = open(self._source_file)
-        else:
-            file = sys.stdin
-        return file
-
-    def get_input_file(self):
-        if self._has_input_file:
-            file = open(self._input_file)
-        else:
-            file = sys.stdin
-        return file
-
-class program_scopes:
-    def __init__(self):
-        self._gf_scope = scope('GF')
-        self._tf_scope = None
-        self._lf_scopes = []
-
-    def def_var(self, instr, name):
-        scope_prefix = name[:2]
-        var_name = name[3:]
-        if scope_prefix == 'GF':
-            return self.def_gf_var(instr, var_name)
-        elif scope_prefix == 'LF':
-            return self.def_lf_var(instr, var_name)
-        elif scope_prefix == 'TF':
-            return self.def_tf_var(instr, var_name)
-        else:
-            print("INTERNAL ERROR: scope detection failed", file=sys.stderr)
-            exit(99)
-
-    def get_var(self, instr, name):
-        scope_prefix = name[:2]
-        var_name = name[3:]
-        if scope_prefix == 'GF':
-            return self.get_gf_var(instr, var_name)
-        elif scope_prefix == 'LF':
-            return self.get_lf_var(instr, var_name)
-        elif scope_prefix == 'TF':
-            return self.get_tf_var(instr, var_name)
-        else:
-            print("INTERNAL ERROR: scope detection failed", file=sys.stderr)
-            exit(99)
-
-    def set_var(self, instr, name, value):
-        scope_prefix = name[:2]
-        var_name = name[3:]
-        if scope_prefix == 'GF':
-            return self.set_gf_var(instr, var_name, value)
-        elif scope_prefix == 'LF':
-            return self.set_lf_var(instr, var_name, value)
-        elif scope_prefix == 'TF':
-            return self.set_tf_var(instr, var_name, value)
-        else:
-            print("INTERNAL ERROR: scope detection failed", file=sys.stderr)
-            exit(99)
-
-    def pop_lf(self, instr):
-        if self._lf_scopes:
-            self._tf_scope = self._lf_scopes[-1]
-            self._lf_scopes.pop()
-        else:
-            i_func.error_exit_on_instruction(instr.get_order(), instr.get_opcode(), f"popping empty LF scope", 52)
-
-    def push_lf(self):
-        if self._lf_scopes:
-            top_lf_scope =  self._lf_scopes[-1]
-            top_lf_scope.set_scope('TF')
-            self._tf_scope = top_lf_scope
-        else:
-            self._tf_scope = scope('TF')
-        self._lf_scopes.append(scope('LF'))
-
-
-    def get_lf(self, instr):
-        if self._lf_scopes:
-            return self._lf_scopes[-1]
-        else:
-            i_func.error_exit_on_instruction(instr.get_order(), instr.get_opcode(), f"LF scope does not exist", 55)
-
-    def get_tf(self, instr):
-        if self._tf_scope:
-            return self._tf_scope
-        else:
-            i_func.error_exit_on_instruction(instr.get_order(), instr.get_opcode(), f"TF scope does not exist", 55)    
-
-    def get_gf(self):
-        return self._gf_scope
-
-    # LF VAR    
-    def def_lf_var(self, instr, name):
-        lf = self.get_lf(instr)
-        lf.define_var(instr, name)
-    
-    def get_lf_var(self, instr, name):
-        lf = self.get_lf(instr)
-        return lf.get_var_value(instr, name)        
-
-    def set_lf_var(self, instr, name, value):
-        lf = self.get_lf(instr)
-        lf.set_var_value(instr, name, value)
-
-    # TF VAR
-    def def_tf_var(self, instr, name):
-        tf = self.get_tf(instr)
-        tf.define_var(instr, name)
-    
-    def get_tf_var(self, instr, name):
-        tf = self.get_tf(instr)
-        return tf.get_var_value(instr, name)        
-
-    def set_tf_var(self, instr, name, value):
-        tf = self.get_tf(instr)
-        tf.set_var_value(instr, name, value)
-
-    # GF VAR
-    def def_gf_var(self, instr, name):
-        self.get_gf().define_var(instr, name)
-
-    def get_gf_var(self, instr, name):
-        gf = self.get_gf()
-        return gf.get_var_value(instr, name)
-
-    def set_gf_var(self, instr, name, value):
-        gf = self.get_gf()
-        gf.set_var_value(instr, name, value)
-
-class scope:
-    def __init__(self, scope_type):
-        self._var_list = {}
-        self._scope_type = scope_type
-    
-    def set_scope(self, scope_type):
-        self._scope_type = scope_type
-
-    def define_var(self, instr, name):
-        if name in self._var_list:
-            i_func.error_exit_on_instruction(instr.get_order(), instr.get_opcode(), f"{self._scope_type}@{name} already defined", 52)
-        else:
-            self._var_list[name] = variable()
-
-    def get_var_value(self, instr, name):
-        if name not in self._var_list:
-            i_func.error_exit_on_instruction(instr.get_order(), instr.get_opcode(), f"{self._scope_type}@{name} not defined", 52)
-        else:
-            return self._var_list[name].get_var_value()
-
-    def set_var_value(self, instr, name, value):
-        if name not in self._var_list:
-            i_func.error_exit_on_instruction(instr.get_order(), instr.get_opcode(), f"{self._scope_type}@{name} not defined", 52)
-        else:
-            self._var_list[name].set_var_value(value)
-        
-class variable:
-    def __init__(self, value = None):
-        self._value = value
-    
-    def get_var_value(self):
-        return self._value
-
-    def set_var_value(self, value):
-        self._value = value
 
 class argument:
     def __init__(self, type : str, content):
@@ -234,6 +31,9 @@ class instruction:
     def get_opcode(self):
         return self._opcode
 
+    def execute(self, scopes :  i_scopes.program_scopes):
+        i_func.error_exit_on_instruction(self._order, self._opcode, "intruction not implemented", 99)
+
 # no arguments
 class no_operands_instr(instruction):
     def __init__(self, order : int):
@@ -244,20 +44,30 @@ class instr_createframe(no_operands_instr):
         super().__init__(order)
         self._opcode = "CREATEFRAME"
 
+    def execute(self, scopes : i_scopes.program_scopes):
+        scopes.createframe()
+
 class instr_pushframe(no_operands_instr):
     def __init__(self, order : int):
         super().__init__(order)
         self._opcode = "PUSHFRAME"
+
+    def execute(self, scopes : i_scopes.program_scopes):
+        scopes.pushframe(self)
 
 class instr_popframe(no_operands_instr):
     def __init__(self, order : int):
         super().__init__(order)
         self._opcode = "POPFRAME"
 
+    def execute(self, scopes : i_scopes.program_scopes):
+        scopes.popframe(self)
+
 class instr_return(no_operands_instr):
     def __init__(self, order : int):
         super().__init__(order)
         self._opcode = "RETURN"
+
 
 class instr_break(no_operands_instr):
     def __init__(self, order : int):
@@ -293,14 +103,20 @@ class instr_write(one_arg_instr):
         super().__init__(order, arg1)
         self._opcode = "WRITE"
     
-    def execute(self, scopes):
+    # TODO writing from var
+    def execute(self, scopes : i_scopes.program_scopes):
         symb = self._arg1
         symb_type = self._arg1.get_type()
         if symb_type == 'var':
             value = scopes.get_var(self, symb.get_content())
-            print(value)
+            print(value, end='')
         elif symb_type == 'nil':
             print('', end='')
+        elif symb_type == 'bool':
+            if symb.get_content() == True:
+                print('true', end='')
+            else:
+                print('false', end='')
         else:
             print(symb.get_content(), end='')
 
@@ -389,7 +205,7 @@ class three_arg_instr(instruction):
             i_func.error_exit_on_instruction(self._order, self._opcode, "zero devision", 57)
         self._result = res
     
-    def execute(self, scopes):
+    def execute(self, scopes : i_scopes.program_scopes):
         var = self._arg1
         symb1 = self._arg2
         symb2 = self._arg3
@@ -522,7 +338,7 @@ class factory:
     @classmethod
     def get_instruction(cls, order : int, opcode : str,
                 arg1 : argument = None, arg2 : argument = None, arg3 : argument = None):
-        no_arguments = {
+        no_argument = {
             'CREATEFRAME' : instr_createframe,
             'PUSHFRAME' : instr_pushframe,
             'RETURN' : instr_return,
@@ -564,8 +380,9 @@ class factory:
             'JUMPIFEQ' : instr_jumpifeq,
             'JUMPIFNEQ' : instr_jumpifneq
         }
-        if opcode in no_arguments:
-            return one_argument[opcode](order)
+
+        if opcode in no_argument:
+            return no_argument[opcode](order)
         elif opcode in one_argument:
             return one_argument[opcode](order, arg1)
         elif opcode in two_arguments:
@@ -591,3 +408,17 @@ class factory:
         elif arg_type == 'var' or arg_type == 'string' or arg_type == 'nil':
             arg_content = arg.text
         return argument(arg.get('type'), arg_content)
+
+    @classmethod
+    def create_instruction(cls, instr):
+        order = instr.get("order")
+        opcode = instr.get("opcode")
+        args = {}
+        for i in range(1,4):
+            arg = instr.findall(f"./arg{i}")
+            if len(arg) > 1:
+                i_func.error_exit_on_instruction(order, opcode, 
+                    f"instruction has more arguments with the same number - arg{i}", 32)
+            if arg:
+                args[f"arg{i}"] = cls.get_argument(arg[0], order, opcode)
+        return cls.get_instruction(order, opcode, **args)
