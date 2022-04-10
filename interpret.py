@@ -18,7 +18,10 @@ def main():
             # sort instruction list by order
             i.get_list().sort(key=lambda x: x.get_order())
             for instr in i.get_list():
-                instr.execute(scopes)
+                if instr.get_opcode() == 'READ':
+                    instr.execute(scopes, input_file)
+                else:
+                    instr.execute(scopes)
 
 if __name__=="__main__":
     main()

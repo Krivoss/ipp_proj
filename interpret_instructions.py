@@ -168,6 +168,9 @@ class instr_label(one_arg_instr):
     def __init__(self, order : int, arg1 : argument):
         super().__init__(order, arg1)
         self._opcode = "LABEL"
+    
+    def execute(self, scopes: i_scopes.program_scopes):
+        pass
 
 class instr_jump(one_arg_instr):
     def __init__(self, order : int, arg1 : argument):
@@ -193,11 +196,33 @@ class instr_int2char(two_arg_instr):
     def __init__(self, order : int, arg1 : argument, arg2 : argument):
         super().__init__(order, arg1, arg2)
         self._opcode = "INT2CHAR"
+    
+    def execute(self, scopes: i_scopes.program_scopes):
+        symb = i_func.get_symb_value(self, scopes, self._arg2)
+        try:
+            if i_func.get_symb_type(self, scopes, self._arg2) != 'int':
+                raise TypeError
+            symb = chr(symb)
+            scopes.set_var(self, self._arg1.get_value(), symb, 'string')       
+        except ValueError:
+            i_func.error_exit_on_instruction(self._order, self._opcode, 58, f"invalid value -", symb)
+        except TypeError:
+            i_func.error_exit_on_instruction(self._order, self._opcode, 53, f"wrong operand types -", symb)
 
 class instr_strlen(two_arg_instr):
     def __init__(self, order : int, arg1 : argument, arg2 : argument):
         super().__init__(order, arg1, arg2)
         self._opcode = "STRLEN"
+
+    def execute(self, scopes: i_scopes.program_scopes):
+        symb = i_func.get_symb_value(self, scopes, self._arg2)
+        try:
+            if i_func.get_symb_type(self, scopes, self._arg2) != 'string':
+                raise TypeError
+            symb = len(symb)
+            scopes.set_var(self, self._arg1.get_value(), symb, 'int')
+        except TypeError:
+            i_func.error_exit_on_instruction(self._order, self._opcode, 53, f"wrong operand types -", symb)
 
 class instr_type(two_arg_instr):
     def __init__(self, order : int, arg1 : argument, arg2 : argument):
@@ -215,11 +240,31 @@ class instr_not(two_arg_instr):
     def __init__(self, order : int, arg1 : argument, arg2 : argument):
         super().__init__(order, arg1, arg2)
         self._opcode = "NOT"
+    
+    def execute(self, scopes: i_scopes.program_scopes):
+        symb = i_func.get_symb_value(self, scopes, self._arg2)
+        try:
+            if i_func.get_symb_type(self, scopes, self._arg2) != 'bool':
+                raise TypeError
+            symb = not(symb)
+            scopes.set_var(self, self._arg1.get_value(), symb, 'bool')
+        except TypeError:
+            i_func.error_exit_on_instruction(self._order, self._opcode, 53, f"wrong operand types -", symb)
 
 class instr_read(two_arg_instr):
     def __init__(self, order : int, arg1 : argument, arg2 : argument):
         super().__init__(order, arg1, arg2)
         self._opcode = "READ"
+
+    def execute(self, scopes: i_scopes.program_scopes, input_file):
+        if input_file.name == '<stdin>':
+            val = input()
+        else:
+            val = input_file.read()
+        if val:
+            scopes.set_var(self, self._arg1.get_value(), val, self._arg2.get_value())
+        else:
+            scopes.set_var(self, self._arg1.get_value(), 'nil', 'nil')
 
 # three arguments
 class three_arg_instr(instruction):    
@@ -505,7 +550,7 @@ class factory:
                 arg_content = True
             else:
                 arg_content = False
-        elif arg_type == 'var' or arg_type == 'string' or arg_type == 'nil':
+        elif arg_type == 'var' or arg_type == 'string' or arg_type == 'nil' or arg_type == 'type':
             arg_content = arg.text
         return argument(arg_type, arg_content)
 
