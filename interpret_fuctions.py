@@ -67,8 +67,12 @@ def print_help():
               "  --source SOURCE  Source file with XML of source code\n"
               "  --input INPUT    File with input for interpret", file=sys.stderr)  
 
-def error_exit_on_instruction(order, opcode, error_message, error_code):
-    print(f"Error: instruction n.{order} {opcode}: {error_message}", file=sys.stderr)
+def error_exit_on_instruction(order, opcode, error_code, error_message, *args):
+    print(f"Error: instruction n.{order} {opcode}: {error_message}", end='', file=sys.stderr)
+    for a in args:
+        a = value_for_print(a)
+        print('', a, end='', file=sys.stderr)
+    print(file=sys.stderr)
     exit(error_code)
 
 def args_process():
@@ -84,3 +88,25 @@ def value_for_print(value):
             return 'false'
     else:
         return value
+
+def convert_to_char(match_obj):
+    if match_obj.group() is not None:
+        num = int(match_obj.group()[1:])
+        return chr(num)
+
+def str_escape(string : str):
+    return re.sub(r'\\\d{3}', convert_to_char, string)
+
+def get_symb_value(instr, scopes, symb):
+    if symb.get_type() == 'var':
+        val = scopes.get_var(instr, symb.get_value()).get_value()
+    else:
+        val = symb.get_value()
+    return val
+
+def get_symb_type(instr, scopes, symb):
+    if symb.get_type() == 'var':
+        val = scopes.get_var(instr, symb.get_value()).get_type()
+    else:
+        val = symb.get_type()
+    return val

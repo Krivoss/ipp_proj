@@ -10,8 +10,11 @@ class variable:
     def get_value(self):
         return self._value
 
-    def set_value(self, value):
+    def set_value(self, value, var_type):
+        if var_type == 'string':
+            value = i_func.str_escape(value)
         self._value = value
+        self._var_type = var_type
 
     def get_type(self):
         return self._var_type
@@ -51,8 +54,7 @@ class scope:
         if name not in self._var_list:
             i_func.error_exit_on_instruction(instr.get_order(), instr.get_opcode(), f"{self._scope_type}@{name} not defined", 52)
         else:
-            self._var_list[name].set_value(value)
-            self._var_list[name].set_type(var_type)
+            self._var_list[name].set_value(value, var_type)
 
 class program_scopes:
     def __init__(self):
@@ -119,8 +121,14 @@ class program_scopes:
         else:
             i_func.error_exit_on_instruction(instr.get_order(), instr.get_opcode(), f"popping non existent LF", 52)
 
-    def push_stack(self):
-        self._stack
+    def push_stack(self, var : variable):
+        self._stack.append(var)
+
+    def pop_stack(self, instr) -> variable:
+        if len(self._stack) > 0:
+            return self._stack.pop()
+        else:
+            i_func.error_exit_on_instruction(instr.get_order(), instr.get_opcode(), f"popping empty stack", 52)
         
     def get_lf(self, instr):
         if self._lf_scopes:

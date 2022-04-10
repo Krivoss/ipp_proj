@@ -1,3 +1,4 @@
+from abc import abstractclassmethod
 import operator
 import sys
 
@@ -40,7 +41,7 @@ class instruction:
         return self._opcode
 
     def execute(self, scopes :  i_scopes.program_scopes):
-        i_func.error_exit_on_instruction(self._order, self._opcode, "intruction not implemented", 99)
+        i_func.error_exit_on_instruction(self._order, self._opcode, 99, "intruction not implemented")
 
 # no arguments
 class no_operands_instr(instruction):
@@ -101,17 +102,29 @@ class instr_pops(one_arg_instr):
         super().__init__(order, arg1)
         self._opcode = "POPS"
 
+    def execute(self, scopes: i_scopes.program_scopes):
+        var = scopes.pop_stack(self)
+        scopes.set_var(self, self._arg1.get_value(), var.get_value(), var.get_type())
+
 class instr_pushs(one_arg_instr):
     def __init__(self, order : int, arg1 : argument):
         super().__init__(order, arg1)
         self._opcode = "PUSHS"
+
+    def execute(self, scopes: i_scopes.program_scopes):
+        if self._arg1.get_type() == 'var':
+            var = scopes.get_var(self, self._arg1.get_value())
+            var = i_scopes.variable(var.get_value(), var.get_type())
+        else:
+            var = i_scopes.variable(self._arg1.get_value(), self._arg1.get_type())            
+        scopes.push_stack(var)
+
 
 class instr_write(one_arg_instr):
     def __init__(self, order : int, arg1 : argument):
         super().__init__(order, arg1)
         self._opcode = "WRITE"
     
-    # TODO writing from var
     def execute(self, scopes : i_scopes.program_scopes):
         symb = self._arg1
         value_type = self._arg1.get_type()
@@ -129,10 +142,22 @@ class instr_exit(one_arg_instr):
         super().__init__(order, arg1)
         self._opcode = "EXIT"
 
+    def execute(self, scopes: i_scopes.program_scopes):
+        ret_val = i_func.get_symb_value(self, scopes, self._arg1)
+        if type(ret_val) == int and ret_val >=0 and ret_val <= 49:
+            exit(ret_val)
+        else:
+            i_func.error_exit_on_instruction(self._order, self._opcode, 57,  f"wrong exit code -", ret_val)
+
 class instr_dprint(one_arg_instr):
     def __init__(self, order : int, arg1 : argument):
         super().__init__(order, arg1)
-        self._opcode = "DPRINT"       
+        self._opcode = "DPRINT"
+
+    def execute(self, scopes: i_scopes.program_scopes):
+        val = i_func.get_symb_type(self, scopes, self._arg1)
+        to_print = i_func.value_for_print(val)
+        print(to_print, end='', file=sys.stderr)      
 
 class instr_call(one_arg_instr):
     def __init__(self, order : int, arg1 : argument):
@@ -178,6 +203,13 @@ class instr_type(two_arg_instr):
     def __init__(self, order : int, arg1 : argument, arg2 : argument):
         super().__init__(order, arg1, arg2)
         self._opcode = "TYPE"
+    
+    def execute(self, scopes: i_scopes.program_scopes):
+        if self._arg1.get_type() == 'var':
+            val_type = scopes.get_var(self, self._arg1.get_value()).get_type()
+        else:
+            val_type = self._arg1.get_type()
+        scopes.set_var(self, self._arg1.get_value(), val_type, 'string')        
 
 class instr_not(two_arg_instr):
     def __init__(self, order : int, arg1 : argument, arg2 : argument):
@@ -198,17 +230,182 @@ class three_arg_instr(instruction):
         self._arg3 = arg3
         self._result = None
         self._instr_operator = None
+    
+    @abstractclassmethod
+    def process(self):
+        pass
+    
+    def execute(self, scopes : i_scopes.program_scopes, res_type : str):
+        symb1 = self._arg2
+        symb2 = self._arg3
+        if symb1.get_type() == 'var':
+            symb1_content = scopes.get_var(self, symb1.get_value()).get_value()
+        else:
+            symb1_content = symb1.get_value()
+        if symb2.get_type() == 'var':
+            symb2_content = scopes.get_var(self, symb2.get_value()).get_value()
+        else:
+            symb2_content = symb2.get_value()
+        if self._instr_operator:
+            self.process(symb1_content, symb2_content, self._instr_operator)
+        else:
+            self.process(symb1_content, symb2_content)
+        var = self._arg1
+        scopes.set_var(self, var.get_value(), self._result, res_type)
 
-    def calc(self, op1, op2, myoperator):
+class arithmetic_instr(three_arg_instr):
+    def process(self, op1, op2, myoperator):
         if not (type(op1) == int and type(op2) == int):
             err_op1 = i_func.value_for_print(op1)
             err_op2 = i_func.value_for_print(op2)
-            i_func.error_exit_on_instruction(self._order, self._opcode, f"wrong operand types - {err_op1} {err_op2}", 53)
+            i_func.error_exit_on_instruction(self._order, self._opcode, 53, f"wrong operand types -", err_op1, err_op2)
         try:
             res = myoperator(op1, op2)
         except ZeroDivisionError:
-            i_func.error_exit_on_instruction(self._order, self._opcode, "zero devision", 57)
+            i_func.error_exit_on_instruction(self._order, self._opcode, 57, "zero devision")
         self._result = res
+    
+    def execute(self, scopes : i_scopes.program_scopes):
+        super().execute(scopes, 'int')
+        
+
+class instr_add(arithmetic_instr):
+    def __init__(self, order : int, arg1 : argument, arg2 : argument, arg3 : argument):
+        super().__init__(order, arg1, arg2, arg3)
+        self._opcode = "ADD"
+        self._instr_operator = operator.add
+    
+
+class instr_sub(arithmetic_instr):
+    def __init__(self, order : int, arg1 : argument, arg2 : argument, arg3 : argument):
+        super().__init__(order, arg1, arg2, arg3)
+        self._opcode = "SUB"
+        self._instr_operator = operator.sub
+
+class instr_mul(arithmetic_instr):
+    def __init__(self, order : int, arg1 : argument, arg2 : argument, arg3 : argument):
+        super().__init__(order, arg1, arg2, arg3)
+        self._opcode = "MUL"
+        self._instr_operator = operator.mul
+
+class instr_idiv(arithmetic_instr):
+    def __init__(self, order : int, arg1 : argument, arg2 : argument, arg3 : argument):
+        super().__init__(order, arg1, arg2, arg3)
+        self._opcode = "IDIV"
+        self._instr_operator = operator.truediv
+
+class relation_instr(three_arg_instr):
+    def process(self, op1, op2, myoperator):
+        try:
+            res = myoperator(op1, op2)
+        except TypeError:
+            err_op1 = i_func.value_for_print(op1)
+            err_op2 = i_func.value_for_print(op2)
+            i_func.error_exit_on_instruction(self._order, self._opcode, 53, f"wrong operand types -", err_op1, err_op2)
+        self._result = res
+
+    def execute(self, scopes: i_scopes.program_scopes):
+        type_arg2 = self._arg2.get_type()
+        type_arg3 = self._arg3.get_type()
+        if type_arg2 == 'nil' or type_arg3 == 'nil':
+            i_func.error_exit_on_instruction(self._order, self._opcode, 53, f"wrong operand types -", self._arg2, self._arg3)
+        super().execute(scopes, 'bool')
+        
+
+class instr_lt(relation_instr):
+    def __init__(self, order : int, arg1 : argument, arg2 : argument, arg3 : argument):
+        super().__init__(order, arg1, arg2, arg3)
+        self._opcode = "LT"
+        self._instr_operator = operator.lt
+
+class instr_gt(relation_instr):
+    def __init__(self, order : int, arg1 : argument, arg2 : argument, arg3 : argument):
+        super().__init__(order, arg1, arg2, arg3)
+        self._opcode = "GT"
+        self._instr_operator = operator.gt
+
+class instr_eq(relation_instr):
+    def __init__(self, order : int, arg1 : argument, arg2 : argument, arg3 : argument):
+        super().__init__(order, arg1, arg2, arg3)
+        self._opcode = "EQ"
+        self._instr_operator = operator.eq
+
+class instr_and(three_arg_instr):
+    def __init__(self, order : int, arg1 : argument, arg2 : argument, arg3 : argument):
+        super().__init__(order, arg1, arg2, arg3)
+        self._opcode = "AND"
+
+class instr_or(three_arg_instr):
+    def __init__(self, order : int, arg1 : argument, arg2 : argument, arg3 : argument):
+        super().__init__(order, arg1, arg2, arg3)
+        self._opcode = "OR"
+
+class instr_stri2int(three_arg_instr):
+    def __init__(self, order : int, arg1 : argument, arg2 : argument, arg3 : argument):
+        super().__init__(order, arg1, arg2, arg3)
+        self._opcode = "STRI2INT"
+
+    def process(self, op1, op2):
+        try:
+            if op2 < 0:
+                raise IndexError
+            self._result = ord(op1[op2])
+        except TypeError:
+            i_func.error_exit_on_instruction(self._order, self._opcode, 53, f"wrong operand types -", op1, op2)
+        except IndexError:
+            i_func.error_exit_on_instruction(self._order, self._opcode, 58, "index out of range")
+        
+    def execute(self, scopes : i_scopes.program_scopes):
+        super().execute(scopes, 'int')
+
+class instr_concat(three_arg_instr):
+    def __init__(self, order : int, arg1 : argument, arg2 : argument, arg3 : argument):
+        super().__init__(order, arg1, arg2, arg3)
+        self._opcode = "CONCAT"
+
+    def process(self, op1, op2):
+        if not (type(op1) == str and type(op2) == str):
+            i_func.error_exit_on_instruction(self._order, self._opcode, 53, f"wrong operand types -", op1, op2)
+        self._result = op1 + op2
+    
+    def execute(self, scopes : i_scopes.program_scopes):
+        super().execute(scopes, 'string')
+
+class instr_getchar(three_arg_instr):
+    def __init__(self, order : int, arg1 : argument, arg2 : argument, arg3 : argument):
+        super().__init__(order, arg1, arg2, arg3)
+        self._opcode = "GETCHAR"
+
+    def process(self, op1, op2):
+        if not (type(op1) == str and type(op2) == int):
+            i_func.error_exit_on_instruction(self._order, self._opcode, 53, f"wrong operand types -", op1, op2)
+        try:
+            if op2 < 0:
+                raise IndexError
+            self._result = ord(op1[op2])
+        except IndexError:
+            i_func.error_exit_on_instruction(self._order, self._opcode, 58, "index out of range")
+        self._result = op1[op2]
+    
+    def execute(self, scopes : i_scopes.program_scopes):
+        super().execute(scopes, 'string')
+
+# TODO OVERIDE
+class instr_setchar(three_arg_instr):
+    def __init__(self, order : int, arg1 : argument, arg2 : argument, arg3 : argument):
+        super().__init__(order, arg1, arg2, arg3)
+        self._opcode = "SETCHAR"
+
+    def process(self, var, op1, op2):
+        if not (type(var) == str and type(op1) == int and type(op2) == str):
+            i_func.error_exit_on_instruction(self._order, self._opcode, 53, f"wrong operand types -", op1, op2)
+        try:
+            if op1 < 0:
+                raise IndexError
+            var = var[:op1] + op2 + var[op1+1:]
+        except IndexError:
+            i_func.error_exit_on_instruction(self._order, self._opcode, 58, "index out of range")
+        self._result = var
     
     def execute(self, scopes : i_scopes.program_scopes):
         var = self._arg1
@@ -222,129 +419,9 @@ class three_arg_instr(instruction):
             symb2_content = scopes.get_var(self, symb2.get_value()).get_value()
         else:
             symb2_content = symb2.get_value()
-        self.calc(symb1_content, symb2_content)
-        scopes.set_var(self, var.get_value(), self._result, 'int')
-
-class instr_add(three_arg_instr):
-    def __init__(self, order : int, arg1 : argument, arg2 : argument, arg3 : argument):
-        super().__init__(order, arg1, arg2, arg3)
-        self._opcode = "ADD"
-        self._instr_operator = operator.add
-
-    def calc(self, op1, op2):
-        super().calc(op1, op2, self._instr_operator)
-    
-
-class instr_sub(three_arg_instr):
-    def __init__(self, order : int, arg1 : argument, arg2 : argument, arg3 : argument):
-        super().__init__(order, arg1, arg2, arg3)
-        self._opcode = "SUB"
-        self._instr_operator = operator.sub
-
-    def calc(self, op1, op2):
-        super().calc(op1, op2, self._instr_operator)
-
-class instr_mul(three_arg_instr):
-    def __init__(self, order : int, arg1 : argument, arg2 : argument, arg3 : argument):
-        super().__init__(order, arg1, arg2, arg3)
-        self._opcode = "MUL"
-        self._instr_operator = operator.mul
-
-    def calc(self, op1, op2):
-        super().calc(op1, op2, self._instr_operator)
-
-class instr_idiv(three_arg_instr):
-    def __init__(self, order : int, arg1 : argument, arg2 : argument, arg3 : argument):
-        super().__init__(order, arg1, arg2, arg3)
-        self._opcode = "IDIV"
-        self._instr_operator = operator.truediv
-
-    def calc(self, op1, op2):
-        super().calc(op1, op2, self._instr_operator)
-
-class relation_instr(three_arg_instr):
-    def calc(self, op1, op2, myoperator):
-        try:
-            res = myoperator(op1, op2)
-        except TypeError:
-            err_op1 = i_func.value_for_print(op1)
-            err_op2 = i_func.value_for_print(op2)
-            i_func.error_exit_on_instruction(self._order, self._opcode, f"wrong operand types - {err_op1} {err_op2}", 53)
-        self._result = res
-
-    def execute(self, scopes: i_scopes.program_scopes):
-        type_arg2 = self._arg2.get_type()
-        type_arg3 = self._arg3.get_type()
-        if type_arg2 == 'nil' or type_arg3 == 'nil':
-            i_func.error_exit_on_instruction(self._order, self._opcode, f"wrong operand types - {self._arg2.value_to_print()} {self._arg3.value_to_print()}", 53)
-        super().execute(scopes)
-
-class instr_lt(relation_instr):
-    def __init__(self, order : int, arg1 : argument, arg2 : argument, arg3 : argument):
-        super().__init__(order, arg1, arg2, arg3)
-        self._opcode = "LT"
-        self._instr_operator = operator.lt
-
-    def calc(self, op1, op2):
-        super().calc(op1, op2, self._instr_operator)
-
-class instr_gt(relation_instr):
-    def __init__(self, order : int, arg1 : argument, arg2 : argument, arg3 : argument):
-        super().__init__(order, arg1, arg2, arg3)
-        self._opcode = "GT"
-        self._instr_operator = operator.gt
-
-    def calc(self, op1, op2):
-        super().calc(op1, op2, self._instr_operator)
-
-class instr_eq(relation_instr):
-    def __init__(self, order : int, arg1 : argument, arg2 : argument, arg3 : argument):
-        super().__init__(order, arg1, arg2, arg3)
-        self._opcode = "EQ"
-        self._instr_operator = operator.eq
-
-    def calc(self, op1, op2):
-        super().calc(op1, op2, self._instr_operator)
-
-class instr_and(three_arg_instr):
-    def __init__(self, order : int, arg1 : argument, arg2 : argument, arg3 : argument):
-        super().__init__(order, arg1, arg2, arg3)
-        self._opcode = "AND"
-
-class instr_or(three_arg_instr):
-    def __init__(self, order : int, arg1 : argument, arg2 : argument, arg3 : argument):
-        super().__init__(order, arg1, arg2, arg3)
-        self._opcode = "OR"
-
-# TODO OVERIDE
-class instr_stri2int(three_arg_instr):
-    def __init__(self, order : int, arg1 : argument, arg2 : argument, arg3 : argument):
-        super().__init__(order, arg1, arg2, arg3)
-        self._opcode = "STRI2INT"
-
-    def calc(self, op1, op2):
-        try:
-            res = ord(op1[op2])
-            self._result = res
-        except TypeError:
-            i_func.error_exit_on_instruction(self._order, self._opcode, f"wrong operand types - {op1} {op2}", 53)
-        except IndexError:
-            i_func.error_exit_on_instruction(self._order, self._opcode, "index out of range", 58)
-
-class instr_concat(three_arg_instr):
-    def __init__(self, order : int, arg1 : argument, arg2 : argument, arg3 : argument):
-        super().__init__(order, arg1, arg2, arg3)
-        self._opcode = "CONCAT"
-
-class instr_getchar(three_arg_instr):
-    def __init__(self, order : int, arg1 : argument, arg2 : argument, arg3 : argument):
-        super().__init__(order, arg1, arg2, arg3)
-        self._opcode = "GETCHAR"
-
-class instr_setchar(three_arg_instr):
-    def __init__(self, order : int, arg1 : argument, arg2 : argument, arg3 : argument):
-        super().__init__(order, arg1, arg2, arg3)
-        self._opcode = "SETCHAR"
+        var_content = scopes.get_var(self, var.get_value()).get_value()
+        self.process(var_content, symb1_content, symb2_content)
+        scopes.set_var(self, var.get_value(), self._result, 'string')
 
 class instr_jumpifeq(three_arg_instr):
     def __init__(self, order : int, arg1 : argument, arg2 : argument, arg3 : argument):
@@ -420,7 +497,7 @@ class factory:
     def get_argument(cls, arg, order, opcode):
         arg_type = arg.get('type')
         if not arg_type:
-            i_func.error_exit_on_instruction(order, opcode, f"argument {arg.tag} has no type atribute", 32)
+            i_func.error_exit_on_instruction(order, opcode, 32, f"argument {arg.tag} has no type atribute")
         if arg_type == 'int':
             arg_content = int(arg.text)        
         elif arg_type == 'bool':
@@ -440,8 +517,8 @@ class factory:
         for i in range(1,4):
             arg = instr.findall(f"./arg{i}")
             if len(arg) > 1:
-                i_func.error_exit_on_instruction(order, opcode, 
-                    f"instruction has more arguments with the same number - arg{i}", 32)
+                i_func.error_exit_on_instruction(order, opcode, 32,
+                    f"instruction has more arguments with the same number - arg{i}")
             if arg:
                 args[f"arg{i}"] = cls.get_argument(arg[0], order, opcode)
         return cls.get_instruction(order, opcode, **args)
