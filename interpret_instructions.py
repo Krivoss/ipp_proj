@@ -172,6 +172,7 @@ class instr_label(one_arg_instr):
     def execute(self, scopes: i_scopes.program_scopes):
         pass
 
+# TODO
 class instr_jump(one_arg_instr):
     def __init__(self, order : int, arg1 : argument):
         super().__init__(order, arg1)
@@ -257,12 +258,32 @@ class instr_read(two_arg_instr):
         self._opcode = "READ"
 
     def execute(self, scopes: i_scopes.program_scopes, input_file):
-        if input_file.name == '<stdin>':
-            val = input()
-        else:
-            val = input_file.read()
+        try:
+            if input_file.name == '<stdin>':
+                val = input()
+            else:
+                val = input_file.read()
+        except EOFError:
+                scopes.set_var(self, self._arg1.get_value(), 'nil', 'nil')
+                return
         if val:
-            scopes.set_var(self, self._arg1.get_value(), val, self._arg2.get_value())
+            read_type = self._arg2.get_value()
+            try:
+                if read_type == 'string':
+                    scopes.set_var(self, self._arg1.get_value(), val, self._arg2.get_value())
+                elif read_type == 'int':
+                    val = int(val)
+                    scopes.set_var(self, self._arg1.get_value(), val, self._arg2.get_value())
+                elif read_type == 'bool':
+                    if val == 'true':
+                        val = True
+                    else:
+                        val = False
+                    scopes.set_var(self, self._arg1.get_value(), val, self._arg2.get_value())
+                else:
+                    raise ValueError
+            except ValueError:
+                i_func.error_exit_on_instruction(self._order, self._opcode, 53, f"wrong operand types -", read_type)
         else:
             scopes.set_var(self, self._arg1.get_value(), 'nil', 'nil')
 
@@ -435,7 +456,6 @@ class instr_getchar(three_arg_instr):
     def execute(self, scopes : i_scopes.program_scopes):
         super().execute(scopes, 'string')
 
-# TODO OVERIDE
 class instr_setchar(three_arg_instr):
     def __init__(self, order : int, arg1 : argument, arg2 : argument, arg3 : argument):
         super().__init__(order, arg1, arg2, arg3)
@@ -468,11 +488,13 @@ class instr_setchar(three_arg_instr):
         self.process(var_content, symb1_content, symb2_content)
         scopes.set_var(self, var.get_value(), self._result, 'string')
 
+# TODO
 class instr_jumpifeq(three_arg_instr):
     def __init__(self, order : int, arg1 : argument, arg2 : argument, arg3 : argument):
         super().__init__(order, arg1, arg2, arg3)
         self._opcode = "JUMPIFEQ"
 
+# TODO
 class instr_jumpifneq(three_arg_instr):
     def __init__(self, order : int, arg1 : argument, arg2 : argument, arg3 : argument):
         super().__init__(order, arg1, arg2, arg3)
