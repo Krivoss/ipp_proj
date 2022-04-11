@@ -75,6 +75,10 @@ def error_exit_on_instruction(order, opcode, error_code, error_message, *args):
     print(file=sys.stderr)
     exit(error_code)
 
+def error_exit_xml_format():
+    print("Error: invalid XML format", file=sys.stderr)
+    exit(31)
+
 def args_process():
     args = prog_arguments()
     args.process_args()
@@ -99,14 +103,14 @@ def str_escape(string : str):
 
 def get_symb_value(instr, scopes, symb):
     if symb.get_type() == 'var':
-        val = scopes.get_var(instr, symb.get_value()).get_value()
+        val = scopes.get_var(instr, symb.get_value(instr)).get_value(instr)
     else:
-        val = symb.get_value()
+        val = symb.get_value(instr)
     return val
 
 def get_symb_type(instr, scopes, symb):
     if symb.get_type() == 'var':
-        val = scopes.get_var(instr, symb.get_value()).get_type()
+        val_type = scopes.get_var(instr, symb.get_value(instr)).get_type()
     else:
-        val = symb.get_type()
-    return val
+        val_type = symb.get_type()
+    return val_type
