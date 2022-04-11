@@ -185,8 +185,10 @@ class instr_exit(one_arg_instr):
 
     def execute(self, scopes: i_scopes.program_scopes):
         ret_val = i_func.get_symb_value(self, scopes, self._arg1)
-        if type(ret_val) == int and ret_val >=0 and ret_val <= 49:
+        if type(ret_val) == int and ret_val >= 0 and ret_val <= 49:
             exit(ret_val)
+        elif type(ret_val) != int:
+            i_func.error_exit_on_instruction(self._order, self._opcode, 53,  f"wrong operand type -", ret_val)
         else:
             i_func.error_exit_on_instruction(self._order, self._opcode, 57,  f"wrong exit code -", ret_val)
 
@@ -359,16 +361,8 @@ class three_arg_instr(instruction):
         self._instr_operator = None
 
     def execute(self, scopes : i_scopes.program_scopes, res_type : str):
-        symb1 = self._arg2
-        symb2 = self._arg3
-        if symb1.get_type() == 'var':
-            symb1_content = scopes.get_var(self, symb1.get_value(self)).get_value(self)
-        else:
-            symb1_content = symb1.get_value(self)
-        if symb2.get_type() == 'var':
-            symb2_content = scopes.get_var(self, symb2.get_value(self)).get_value(self)
-        else:
-            symb2_content = symb2.get_value(self)
+        symb1_content = i_func.get_symb_value(self, scopes, self._arg2)
+        symb2_content = i_func.get_symb_value(self, scopes, self._arg3)
         if self._instr_operator:
             self.process(symb1_content, symb2_content, self._instr_operator)
         else:
@@ -379,9 +373,7 @@ class three_arg_instr(instruction):
 class arithmetic_instr(three_arg_instr):
     def process(self, op1, op2, myoperator):
         if not (type(op1) == int and type(op2) == int):
-            err_op1 = i_func.value_for_print(op1)
-            err_op2 = i_func.value_for_print(op2)
-            i_func.error_exit_on_instruction(self._order, self._opcode, 53, f"wrong operand types -", err_op1, err_op2)
+            i_func.error_exit_on_instruction(self._order, self._opcode, 53, f"wrong operand types -", op1, op2)
         try:
             res = int(myoperator(op1, op2))
         except ZeroDivisionError:
@@ -420,16 +412,16 @@ class relation_instr(three_arg_instr):
         try:
             res = myoperator(op1, op2)
         except TypeError:
-            err_op1 = i_func.value_for_print(op1)
-            err_op2 = i_func.value_for_print(op2)
-            i_func.error_exit_on_instruction(self._order, self._opcode, 53, f"wrong operand types -", err_op1, err_op2)
+            i_func.error_exit_on_instruction(self._order, self._opcode, 53, f"wrong operand types -", op1, op2)
         self._result = res
 
     def execute(self, scopes: i_scopes.program_scopes):
-        type_arg2 = self._arg2.get_type()
-        type_arg3 = self._arg3.get_type()
-        if type_arg2 == 'nil' or type_arg3 == 'nil':
-            i_func.error_exit_on_instruction(self._order, self._opcode, 53, f"wrong operand types -", self._arg2, self._arg3)
+        symb1_type = i_func.get_symb_type(self, scopes, self._arg2)
+        symb2_type = i_func.get_symb_type(self, scopes, self._arg3)
+        i_func.get_symb_value(self, scopes, self._arg2)
+        i_func.get_symb_value(self, scopes, self._arg3)
+        if symb1_type == 'nil' or symb2_type == 'nil' or symb1_type != symb2_type:
+            i_func.error_exit_on_instruction(self._order, self._opcode, 53, f"wrong operand types -", self._arg1.get_value(self), self._arg2.get_value(self))
         super().execute(scopes, 'bool')
 
 class instr_lt(relation_instr):
@@ -484,11 +476,15 @@ class instr_concat(three_arg_instr):
         self._opcode = "CONCAT"
 
     def process(self, op1, op2):
-        if not (type(op1) == str and type(op2) == str):
-            i_func.error_exit_on_instruction(self._order, self._opcode, 53, f"wrong operand types -", op1, op2)
         self._result = op1 + op2
     
     def execute(self, scopes : i_scopes.program_scopes):
+        symb1_type = i_func.get_symb_type(self, scopes, self._arg2)
+        symb2_type = i_func.get_symb_type(self, scopes, self._arg3)
+        i_func.get_symb_value(self, scopes, self._arg2)
+        i_func.get_symb_value(self, scopes, self._arg3)
+        if symb1_type != 'string' or symb2_type != 'string':
+            i_func.error_exit_on_instruction(self._order, self._opcode, 53, f"wrong operand types -", self._arg1.get_value(self), self._arg2.get_value(self))
         super().execute(scopes, 'string')
 
 class instr_getchar(three_arg_instr):

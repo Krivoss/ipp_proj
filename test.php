@@ -11,7 +11,7 @@ $prog_args = arg_check();
 // var_dump($prog_args);
 
 $tests = test($prog_args);
-$tests->print_results();
+$tests->print_results_to_console();
 
 //                        FUNCTIONS
 
@@ -324,7 +324,7 @@ class test {
     }
 
     function parse_and_interpret($prog_args, $tests) {
-        if ($this->parse($prog_args, $tests, true)) {
+        if ($this->parse($prog_args, $tests, true) == false) {
             return;
         }
         $this->src_file = $this->tmp_file;
@@ -377,7 +377,7 @@ class test_set {
         return $this->tests;
     }
 
-    function print_results() {
+    function print_results_to_console() {
         $this->get_results();
         $passed = $this->get_passed();
         $failed = $this->get_failed();

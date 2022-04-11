@@ -12,7 +12,7 @@ class variable:
         if self._initialized:
             return self._value
         else:
-            i_func.error_exit_on_instruction(instr.get_order(), instr.get_opcode(), 52, f"variable not initialezed")
+            i_func.error_exit_on_instruction(instr.get_order(), instr.get_opcode(), 56, f"variable not initialized")
 
     def set_value(self, value, var_type):
         if var_type == 'string':
@@ -51,13 +51,13 @@ class scope:
 
     def get_scope_var(self, instr, name):
         if name not in self._var_list:
-            i_func.error_exit_on_instruction(instr.get_order(), instr.get_opcode(), 52, f"{self._scope_type}@{name} not defined")
+            i_func.error_exit_on_instruction(instr.get_order(), instr.get_opcode(), 54, f"{self._scope_type}@{name} not defined")
         else:
             return self._var_list[name]
 
     def set_scope_var(self, instr, name, value, var_type):
         if name not in self._var_list:
-            i_func.error_exit_on_instruction(instr.get_order(), instr.get_opcode(), 52, f"{self._scope_type}@{name} not defined")
+            i_func.error_exit_on_instruction(instr.get_order(), instr.get_opcode(), 54, f"{self._scope_type}@{name} not defined")
         else:
             self._var_list[name].set_value(value, var_type)
 
