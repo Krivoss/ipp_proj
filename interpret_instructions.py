@@ -4,6 +4,8 @@ import sys
 import interpret_scopes as i_scopes
 import interpret_fuctions as i_func
 
+# TODO get_symb_val/type
+
 class argument:
     def __init__(self, type : str, content):
         self._type = type
@@ -117,7 +119,7 @@ class instr_break(no_operands_instr):
         self._opcode = "BREAK"
 
     def execute(self, scopes: i_scopes.program_scopes):
-        message = "Break info:\n\tnumber of instructions executed: " + str(scopes.get_instr_num() - 1)
+        message = "Break info:\n\ton instruction number " + str(scopes.get_instr_num())
         # TODO more break info
         print(message, file=sys.stderr)
 
@@ -158,7 +160,6 @@ class instr_pushs(one_arg_instr):
             var = i_scopes.variable()
             var.set_value(self._arg1.get_value(self), self._arg1.get_type())
         scopes.push_stack(var)
-
 
 class instr_write(one_arg_instr):
     def __init__(self, order : int, arg1 : argument):
@@ -219,7 +220,14 @@ class instr_label(one_arg_instr):
         return self._arg1.get_value(self)
 
     def execute(self, scopes: i_scopes.program_scopes):
-        pass
+        i_list = self.get_list()
+        for instr in i_list:
+            if instr.get_order() > self._order:
+                return
+            if instr.get_opcode() == 'LABEL':
+                if instr.get_label_name() == self._arg1.get_value(self):
+                    if instr.get_order() != self._order:
+                        i_func.error_exit_on_instruction(self._order, self._opcode, 52, f"label already exists -", self._arg1.get_value(self))
 
 
 class instr_jump(one_arg_instr):
@@ -285,10 +293,7 @@ class instr_type(two_arg_instr):
         self._opcode = "TYPE"
     
     def execute(self, scopes: i_scopes.program_scopes):
-        if self._arg1.get_type() == 'var':
-            val_type = scopes.get_var(self, self._arg1.get_value(self)).get_type()
-        else:
-            val_type = self._arg1.get_type()
+        val_type = i_func.get_symb_type(self, scopes, self._arg2)
         scopes.set_var(self, self._arg1.get_value(self), val_type, 'string')        
 
 class instr_not(two_arg_instr):
@@ -316,7 +321,9 @@ class instr_read(two_arg_instr):
             if input_file.name == '<stdin>':
                 val = input()
             else:
-                val = input_file.read()
+                val = input_file.readline()
+                if val[-1] == "\n":
+                    val = val[:-1]
         except EOFError:
                 scopes.set_var(self, self._arg1.get_value(self), 'nil', 'nil')
                 return
@@ -376,21 +383,19 @@ class arithmetic_instr(three_arg_instr):
             err_op2 = i_func.value_for_print(op2)
             i_func.error_exit_on_instruction(self._order, self._opcode, 53, f"wrong operand types -", err_op1, err_op2)
         try:
-            res = myoperator(op1, op2)
+            res = int(myoperator(op1, op2))
         except ZeroDivisionError:
             i_func.error_exit_on_instruction(self._order, self._opcode, 57, "zero devision")
         self._result = res
     
     def execute(self, scopes : i_scopes.program_scopes):
         super().execute(scopes, 'int')
-        
 
 class instr_add(arithmetic_instr):
     def __init__(self, order : int, arg1 : argument, arg2 : argument, arg3 : argument):
         super().__init__(order, arg1, arg2, arg3)
         self._opcode = "ADD"
-        self._instr_operator = operator.add
-    
+        self._instr_operator = operator.add    
 
 class instr_sub(arithmetic_instr):
     def __init__(self, order : int, arg1 : argument, arg2 : argument, arg3 : argument):
@@ -408,7 +413,7 @@ class instr_idiv(arithmetic_instr):
     def __init__(self, order : int, arg1 : argument, arg2 : argument, arg3 : argument):
         super().__init__(order, arg1, arg2, arg3)
         self._opcode = "IDIV"
-        self._instr_operator = operator.truediv
+        self._instr_operator = operator.floordiv
 
 class relation_instr(three_arg_instr):
     def process(self, op1, op2, myoperator):
@@ -426,7 +431,6 @@ class relation_instr(three_arg_instr):
         if type_arg2 == 'nil' or type_arg3 == 'nil':
             i_func.error_exit_on_instruction(self._order, self._opcode, 53, f"wrong operand types -", self._arg2, self._arg3)
         super().execute(scopes, 'bool')
-        
 
 class instr_lt(relation_instr):
     def __init__(self, order : int, arg1 : argument, arg2 : argument, arg3 : argument):
@@ -538,7 +542,6 @@ class instr_setchar(three_arg_instr):
         self.process(var_content, symb1_content, symb2_content)
         scopes.set_var(self, var.get_value(self), self._result, 'string')
 
-
 class instr_jumpifeq(three_arg_instr):
     def __init__(self, order : int, arg1 : argument, arg2 : argument, arg3 : argument):
         super().__init__(order, arg1, arg2, arg3)
@@ -559,7 +562,6 @@ class instr_jumpifeq(three_arg_instr):
             label = self._arg1.get_value(self)
             index = self.find_label(label)
             scopes.set_intr_num(index)
-
 
 class instr_jumpifneq(three_arg_instr):
     def __init__(self, order : int, arg1 : argument, arg2 : argument, arg3 : argument):

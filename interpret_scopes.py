@@ -3,7 +3,7 @@ import sys
 import interpret_fuctions as i_func
 
 class variable:
-    def __init__(self, value = None, var_type = 'nil'):
+    def __init__(self, value = None, var_type = ''):
         self._value = value
         self._var_type = var_type
         self._initialized = False
@@ -115,7 +115,7 @@ class program_scopes:
     def pushframe(self, instr):
         if self._tf_scope:
             self._tf_scope.set_scope('LF')
-            self._lf_scopes.append(scope('LF'))
+            self._lf_scopes.append(self._tf_scope)
             self._tf_scope = scope('TF')
         else:
             i_func.error_exit_on_instruction(instr.get_order(), instr.get_opcode(), 55, f"pushing non existent TF")
@@ -126,7 +126,7 @@ class program_scopes:
             self._tf_scope = self._lf_scopes[-1]
             self._lf_scopes.pop()
         else:
-            i_func.error_exit_on_instruction(instr.get_order(), instr.get_opcode(), 52, f"popping non existent LF")
+            i_func.error_exit_on_instruction(instr.get_order(), instr.get_opcode(), 55, f"popping non existent LF")
 
     def push_stack(self, var : variable):
         self._stack.append(var)
@@ -135,7 +135,7 @@ class program_scopes:
         if len(self._stack) > 0:
             return self._stack.pop()
         else:
-            i_func.error_exit_on_instruction(instr.get_order(), instr.get_opcode(), 52, f"popping empty stack")
+            i_func.error_exit_on_instruction(instr.get_order(), instr.get_opcode(), 55, f"popping empty stack")
         
     def get_lf(self, instr):
         if self._lf_scopes:
