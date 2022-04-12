@@ -2,6 +2,7 @@ import os.path
 import sys
 import re
 
+# TODO dont let help with anything else
 class prog_arguments:
     def __init__(self):
         self._will_print_help = False

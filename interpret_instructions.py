@@ -4,7 +4,6 @@ import sys
 import interpret_scopes as i_scopes
 import interpret_fuctions as i_func
 
-# TODO get_symb_val/type
 
 class argument:
     def __init__(self, type : str, content):
@@ -152,13 +151,9 @@ class instr_pushs(one_arg_instr):
         self._opcode = "PUSHS"
 
     def execute(self, scopes: i_scopes.program_scopes):
-        if self._arg1.get_type() == 'var':
-            var = scopes.get_var(self, self._arg1.get_value(self))
-            var = i_scopes.variable()
-            var.set_value(var.get_value(self), var.get_type())
-        else:
-            var = i_scopes.variable()
-            var.set_value(self._arg1.get_value(self), self._arg1.get_type())
+        symb_val = i_func.get_symb_value(self, scopes, self._arg1)
+        var = i_scopes.variable()
+        var.set_value(symb_val, self._arg1.get_type())
         scopes.push_stack(var)
 
 class instr_write(one_arg_instr):
@@ -167,13 +162,10 @@ class instr_write(one_arg_instr):
         self._opcode = "WRITE"
     
     def execute(self, scopes : i_scopes.program_scopes):
-        symb = self._arg1
-        value_type = self._arg1.get_type()
-        if value_type == 'var':
-            symb = scopes.get_var(self, symb.get_value(self))
-            value_type = symb.get_type()
-        to_print = i_func.value_for_print(symb.get_value(self))
-        if value_type == 'nil':
+        symb_val = i_func.get_symb_value(self, scopes, self._arg1)
+        symb_type = i_func.get_symb_type(self, scopes, self._arg1)
+        to_print = i_func.value_for_print(symb_val)
+        if symb_type == 'nil':
             print('', end='')
         else:
             print(to_print, end='')
@@ -283,13 +275,10 @@ class instr_strlen(two_arg_instr):
 
     def execute(self, scopes: i_scopes.program_scopes):
         symb = i_func.get_symb_value(self, scopes, self._arg2)
-        try:
-            if i_func.get_symb_type(self, scopes, self._arg2) != 'string':
-                raise TypeError
-            symb = len(symb)
-            scopes.set_var(self, self._arg1.get_value(self), symb, 'int')
-        except TypeError:
+        if i_func.get_symb_type(self, scopes, self._arg2) != 'string':
             i_func.error_exit_on_instruction(self._order, self._opcode, 53, f"wrong operand types -", symb)
+        symb = len(symb)
+        scopes.set_var(self, self._arg1.get_value(self), symb, 'int')
 
 class instr_type(two_arg_instr):
     def __init__(self, order : int, arg1 : argument, arg2 : argument):
@@ -307,13 +296,11 @@ class instr_not(two_arg_instr):
     
     def execute(self, scopes: i_scopes.program_scopes):
         symb = i_func.get_symb_value(self, scopes, self._arg2)
-        try:
-            if i_func.get_symb_type(self, scopes, self._arg2) != 'bool':
-                raise TypeError
-            symb = not(symb)
-            scopes.set_var(self, self._arg1.get_value(self), symb, 'bool')
-        except TypeError:
+        if i_func.get_symb_type(self, scopes, self._arg2) != 'bool':
             i_func.error_exit_on_instruction(self._order, self._opcode, 53, f"wrong operand types -", symb)
+        symb = not(symb)
+        scopes.set_var(self, self._arg1.get_value(self), symb, 'bool')
+            
 
 class instr_read(two_arg_instr):
     def __init__(self, order : int, arg1 : argument, arg2 : argument):
@@ -530,8 +517,6 @@ class instr_getchar(three_arg_instr):
     def execute(self, scopes : i_scopes.program_scopes):
         symb1_type = i_func.get_symb_type(self, scopes, self._arg2)
         symb2_type = i_func.get_symb_type(self, scopes, self._arg3)
-        i_func.get_symb_value(self, scopes, self._arg2)
-        i_func.get_symb_value(self, scopes, self._arg3)
         if symb1_type != 'string' or symb2_type != 'int':
             i_func.error_exit_on_instruction(self._order, self._opcode, 53, f"wrong operand types -", self._arg1.get_value(self), self._arg2.get_value(self))
         super().execute(scopes, 'string')

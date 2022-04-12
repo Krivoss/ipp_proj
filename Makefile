@@ -15,4 +15,4 @@ test_ok2: pack2
 	./is_it_ok.sh xkriva30.zip test_ok 2
 	
 clean:
-	rm -rf xkriva30.zip temp*
+	rm -rf xkriva30.zip temp* out.html
