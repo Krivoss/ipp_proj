@@ -82,6 +82,10 @@ function test($prog_args) {
         else {
             $test->parse_and_interpret($prog_args, $tests);
         }
+        if($prog_args->get_noclean() == false) {
+            $command = "rm -f ".$test->get_name().".tmp ".$test->get_name().".tmp.out";
+            exec($command);
+        }
     }
     return $tests;
 }
@@ -176,6 +180,10 @@ class prog_arguments {
 
     function get_jexam() {
         return $this->jexam;
+    }
+
+    function get_noclean() {
+        return $this->noclean;
     }
 }
 
