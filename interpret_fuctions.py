@@ -110,6 +110,14 @@ def get_symb_value(instr, scopes, symb):
 
 def get_symb_type(instr, scopes, symb):
     if symb.get_type() == 'var':
+        get_symb_value(instr, scopes, symb)
+        val_type = scopes.get_var(instr, symb.get_value(instr)).get_type()
+    else:
+        val_type = symb.get_type()
+    return val_type
+
+def get_symb_type_no_err(instr, scopes, symb):
+    if symb.get_type() == 'var':
         val_type = scopes.get_var(instr, symb.get_value(instr)).get_type()
     else:
         val_type = symb.get_type()

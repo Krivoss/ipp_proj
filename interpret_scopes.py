@@ -68,7 +68,7 @@ class program_scopes:
         self._lf_scopes = []
         self._stack = []
         self._intr_num = 0
-        self._return_num = None
+        self._return_stack = []
 
     def def_var(self, instr, name):
         scope_prefix = name[:2]
@@ -95,6 +95,7 @@ class program_scopes:
         else:
             print("INTERNAL ERROR: scope detection failed", file=sys.stderr)
             exit(99)
+        
 
     def set_var(self, instr, name, value, value_type):
         scope_prefix = name[:2]
@@ -116,7 +117,7 @@ class program_scopes:
         if self._tf_scope:
             self._tf_scope.set_scope('LF')
             self._lf_scopes.append(self._tf_scope)
-            self._tf_scope = scope('TF')
+            self._tf_scope = None
         else:
             i_func.error_exit_on_instruction(instr.get_order(), instr.get_opcode(), 55, f"pushing non existent TF")
     
@@ -135,7 +136,7 @@ class program_scopes:
         if len(self._stack) > 0:
             return self._stack.pop()
         else:
-            i_func.error_exit_on_instruction(instr.get_order(), instr.get_opcode(), 55, f"popping empty stack")
+            i_func.error_exit_on_instruction(instr.get_order(), instr.get_opcode(), 56, f"popping empty stack")
         
     def get_lf(self, instr):
         if self._lf_scopes:
@@ -200,10 +201,12 @@ class program_scopes:
         self._intr_num = num
 
     def get_return_num(self, instr):
-        if self._return_num:
-            return self._return_num
+        if len(self._return_stack):
+            ret = int(self._return_stack[-1])
+            self._return_stack.pop()
+            return ret
         else:
             i_func.error_exit_on_instruction(instr.get_order(), instr.get_opcode(), 56, f"return without call")
     
     def set_return_num(self, num : int):
-        self._return_num = num
+        self._return_stack.append(str(num))

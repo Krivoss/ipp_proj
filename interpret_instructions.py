@@ -255,7 +255,9 @@ class instr_move(two_arg_instr):
         self._opcode = "MOVE"
     
     def execute(self, scopes):
-        scopes.set_var(self, self._arg1.get_value(self), self._arg2.get_value(self), self._arg2.get_type())
+        symb = i_func.get_symb_value(self, scopes, self._arg2)
+        symb_type = i_func.get_symb_type(self, scopes, self._arg2)
+        scopes.set_var(self, self._arg1.get_value(self), symb, symb_type)
 
 class instr_int2char(two_arg_instr):
     def __init__(self, order : int, arg1 : argument, arg2 : argument):
@@ -295,7 +297,7 @@ class instr_type(two_arg_instr):
         self._opcode = "TYPE"
     
     def execute(self, scopes: i_scopes.program_scopes):
-        val_type = i_func.get_symb_type(self, scopes, self._arg2)
+        val_type = i_func.get_symb_type_no_err(self, scopes, self._arg2)
         scopes.set_var(self, self._arg1.get_value(self), val_type, 'string')        
 
 class instr_not(two_arg_instr):
@@ -324,29 +326,31 @@ class instr_read(two_arg_instr):
                 val = input()
             else:
                 val = input_file.readline()
-                if val[-1] == "\n":
-                    val = val[:-1]
+                if val:
+                    if val[-1] == "\n":
+                        val = val[:-1]
         except EOFError:
                 scopes.set_var(self, self._arg1.get_value(self), 'nil', 'nil')
                 return
-        if val:
-            read_type = self._arg2.get_value(self)
+        read_type = self._arg2.get_value(self)
+        if val:            
             try:
+                var = self._arg1.get_value(self)
                 if read_type == 'string':
-                    scopes.set_var(self, self._arg1.get_value(self), val, self._arg2.get_value(self))
+                    scopes.set_var(self, var, val, self._arg2.get_value(self))
                 elif read_type == 'int':
                     val = int(val)
-                    scopes.set_var(self, self._arg1.get_value(self), val, self._arg2.get_value(self))
+                    scopes.set_var(self, var, val, self._arg2.get_value(self))
                 elif read_type == 'bool':
-                    if val == 'true':
+                    if val.lower() == 'true':
                         val = True
                     else:
                         val = False
-                    scopes.set_var(self, self._arg1.get_value(self), val, self._arg2.get_value(self))
+                    scopes.set_var(self, var, val, self._arg2.get_value(self))
                 else:
                     raise ValueError
             except ValueError:
-                i_func.error_exit_on_instruction(self._order, self._opcode, 53, f"wrong operand types -", read_type)
+                scopes.set_var(self, var, 'nil', 'nil')
         else:
             scopes.set_var(self, self._arg1.get_value(self), 'nil', 'nil')
 
@@ -418,10 +422,10 @@ class relation_instr(three_arg_instr):
     def execute(self, scopes: i_scopes.program_scopes):
         symb1_type = i_func.get_symb_type(self, scopes, self._arg2)
         symb2_type = i_func.get_symb_type(self, scopes, self._arg3)
-        i_func.get_symb_value(self, scopes, self._arg2)
-        i_func.get_symb_value(self, scopes, self._arg3)
-        if symb1_type == 'nil' or symb2_type == 'nil' or symb1_type != symb2_type:
-            i_func.error_exit_on_instruction(self._order, self._opcode, 53, f"wrong operand types -", self._arg1.get_value(self), self._arg2.get_value(self))
+        if self._opcode != "EQ" and (symb1_type == 'nil' or symb2_type == 'nil' or symb1_type != symb2_type):
+            i_func.error_exit_on_instruction(self._order, self._opcode, 53, f"wrong operand types -", self._arg2.get_value(self), self._arg3.get_value(self))
+        if self._opcode == "EQ" and (symb1_type != 'nil' and symb2_type != 'nil' and symb1_type != symb2_type):
+            i_func.error_exit_on_instruction(self._order, self._opcode, 53, f"wrong operand types -", self._arg2.get_value(self), self._arg3.get_value(self))
         super().execute(scopes, 'bool')
 
 class instr_lt(relation_instr):
@@ -442,15 +446,33 @@ class instr_eq(relation_instr):
         self._opcode = "EQ"
         self._instr_operator = operator.eq
 
-class instr_and(three_arg_instr):
+class logical_instr(three_arg_instr):
+    def process(self, op1, op2, myoperator):
+        try:
+            res = myoperator(op1, op2)
+        except TypeError:
+            i_func.error_exit_on_instruction(self._order, self._opcode, 53, f"wrong operand types -", op1, op2)
+        self._result = res
+
+    def execute(self, scopes: i_scopes.program_scopes):
+        symb1_type = i_func.get_symb_type(self, scopes, self._arg2)
+        symb2_type = i_func.get_symb_type(self, scopes, self._arg3)
+        if not (symb1_type == symb2_type and symb1_type == 'bool'):
+            i_func.error_exit_on_instruction(self._order, self._opcode, 53, f"wrong operand types -", self._arg2.get_value(self), self._arg3.get_value(self))
+        super().execute(scopes, 'bool')
+
+class instr_and(logical_instr):
     def __init__(self, order : int, arg1 : argument, arg2 : argument, arg3 : argument):
         super().__init__(order, arg1, arg2, arg3)
         self._opcode = "AND"
+        self._instr_operator = operator.and_
 
-class instr_or(three_arg_instr):
+class instr_or(logical_instr):
     def __init__(self, order : int, arg1 : argument, arg2 : argument, arg3 : argument):
         super().__init__(order, arg1, arg2, arg3)
         self._opcode = "OR"
+        self._instr_operator = operator.or_
+
 
 class instr_stri2int(three_arg_instr):
     def __init__(self, order : int, arg1 : argument, arg2 : argument, arg3 : argument):
@@ -468,6 +490,10 @@ class instr_stri2int(three_arg_instr):
             i_func.error_exit_on_instruction(self._order, self._opcode, 58, "index out of range")
         
     def execute(self, scopes : i_scopes.program_scopes):
+        symb1_type = i_func.get_symb_type(self, scopes, self._arg2)
+        symb2_type = i_func.get_symb_type(self, scopes, self._arg3)
+        if not (symb1_type == 'string' and symb2_type == 'int'):
+            i_func.error_exit_on_instruction(self._order, self._opcode, 53, f"wrong operand types -", self._arg2.get_value(self), self._arg3.get_value(self))
         super().execute(scopes, 'int')
 
 class instr_concat(three_arg_instr):
@@ -481,8 +507,6 @@ class instr_concat(three_arg_instr):
     def execute(self, scopes : i_scopes.program_scopes):
         symb1_type = i_func.get_symb_type(self, scopes, self._arg2)
         symb2_type = i_func.get_symb_type(self, scopes, self._arg3)
-        i_func.get_symb_value(self, scopes, self._arg2)
-        i_func.get_symb_value(self, scopes, self._arg3)
         if symb1_type != 'string' or symb2_type != 'string':
             i_func.error_exit_on_instruction(self._order, self._opcode, 53, f"wrong operand types -", self._arg1.get_value(self), self._arg2.get_value(self))
         super().execute(scopes, 'string')
@@ -504,6 +528,12 @@ class instr_getchar(three_arg_instr):
         self._result = op1[op2]
     
     def execute(self, scopes : i_scopes.program_scopes):
+        symb1_type = i_func.get_symb_type(self, scopes, self._arg2)
+        symb2_type = i_func.get_symb_type(self, scopes, self._arg3)
+        i_func.get_symb_value(self, scopes, self._arg2)
+        i_func.get_symb_value(self, scopes, self._arg3)
+        if symb1_type != 'string' or symb2_type != 'int':
+            i_func.error_exit_on_instruction(self._order, self._opcode, 53, f"wrong operand types -", self._arg1.get_value(self), self._arg2.get_value(self))
         super().execute(scopes, 'string')
 
 class instr_setchar(three_arg_instr):
@@ -515,28 +545,26 @@ class instr_setchar(three_arg_instr):
         if not (type(var) == str and type(op1) == int and type(op2) == str):
             i_func.error_exit_on_instruction(self._order, self._opcode, 53, f"wrong operand types -", op1, op2)
         try:
-            if op1 < 0:
+            if op1 < 0 or op1 >= len(var):
                 raise IndexError
-            var = var[:op1] + op2 + var[op1+1:]
+            if len(op2) <= 0:
+                i_func.error_exit_on_instruction(self._order, self._opcode, 58, "empty string")
+            var = var[:op1] + op2[0] + var[op1+1:]
         except IndexError:
             i_func.error_exit_on_instruction(self._order, self._opcode, 58, "index out of range")
         self._result = var
     
     def execute(self, scopes : i_scopes.program_scopes):
-        var = self._arg1
-        symb1 = self._arg2
-        symb2 = self._arg3
-        if symb1.get_type() == 'var':
-            symb1_content = scopes.get_var(self, symb1.get_value(self)).get_value(self)
-        else:
-            symb1_content = symb1.get_value(self)
-        if symb2.get_type() == 'var':
-            symb2_content = scopes.get_var(self, symb2.get_value(self)).get_value(self)
-        else:
-            symb2_content = symb2.get_value(self)
-        var_content = scopes.get_var(self, var.get_value(self)).get_value(self)
-        self.process(var_content, symb1_content, symb2_content)
-        scopes.set_var(self, var.get_value(self), self._result, 'string')
+        var_val = i_func.get_symb_value(self, scopes, self._arg1)
+        symb1_val = i_func.get_symb_value(self, scopes, self._arg2)
+        symb2_val = i_func.get_symb_value(self, scopes, self._arg3)
+        var_type = i_func.get_symb_type(self, scopes, self._arg1)
+        symb1_type = i_func.get_symb_type(self, scopes, self._arg2)
+        symb2_type = i_func.get_symb_type(self, scopes, self._arg3)
+        if var_type != 'string' or symb1_type != 'int' or symb2_type != 'string':
+            i_func.error_exit_on_instruction(self._order, self._opcode, 53, f"wrong operand types -", self._arg2.get_value(self), self._arg3.get_value(self))
+        self.process(var_val, symb1_val, symb2_val)
+        scopes.set_var(self, self._arg1.get_value(self), self._result, 'string')
 
 class instr_jumpifeq(three_arg_instr):
     def __init__(self, order : int, arg1 : argument, arg2 : argument, arg3 : argument):
@@ -545,18 +573,17 @@ class instr_jumpifeq(three_arg_instr):
 
     def execute(self, scopes: i_scopes.program_scopes):
         condition = False
-        symb1_val = i_func.get_symb_value(self, scopes, self._arg2)
-        symb2_val = i_func.get_symb_value(self, scopes, self._arg3)
         symb1_type = i_func.get_symb_type(self, scopes, self._arg2)
         symb2_type = i_func.get_symb_type(self, scopes, self._arg3)
-        if symb1_type == 'nil' or symb2_type == 'nil':
+        if (symb1_type != 'nil' and symb2_type != 'nil' and symb1_type != symb2_type):
+            i_func.error_exit_on_instruction(self._order, self._opcode, 53, f"wrong operand types -", self._arg2.get_value(self), self._arg3.get_value(self))
+        symb1_val = i_func.get_symb_value(self, scopes, self._arg2)
+        symb2_val = i_func.get_symb_value(self, scopes, self._arg3)
+        if symb1_val == symb2_val:
             condition = True
-        elif symb1_type == symb2_type:
-            if symb1_val == symb2_val:
-                condition = True
+        label = self._arg1.get_value(self)
+        index = self.find_label(label)
         if condition:
-            label = self._arg1.get_value(self)
-            index = self.find_label(label)
             scopes.set_intr_num(index)
 
 class instr_jumpifneq(three_arg_instr):
@@ -566,18 +593,17 @@ class instr_jumpifneq(three_arg_instr):
 
     def execute(self, scopes: i_scopes.program_scopes):
         condition = False
-        symb1_val = i_func.get_symb_value(self, scopes, self._arg2)
-        symb2_val = i_func.get_symb_value(self, scopes, self._arg3)
         symb1_type = i_func.get_symb_type(self, scopes, self._arg2)
         symb2_type = i_func.get_symb_type(self, scopes, self._arg3)
-        if symb1_type == 'nil' or symb2_type == 'nil':
+        if (symb1_type != 'nil' and symb2_type != 'nil' and symb1_type != symb2_type):
+            i_func.error_exit_on_instruction(self._order, self._opcode, 53, f"wrong operand types -", self._arg2.get_value(self), self._arg3.get_value(self))
+        symb1_val = i_func.get_symb_value(self, scopes, self._arg2)
+        symb2_val = i_func.get_symb_value(self, scopes, self._arg3)
+        if symb1_val == symb2_val:
             condition = True
-        elif symb1_type == symb2_type:
-            if symb1_val == symb2_val:
-                condition = True
+        label = self._arg1.get_value(self)
+        index = self.find_label(label)
         if not condition:
-            label = self._arg1.get_value(self)
-            index = self.find_label(label)
             scopes.set_intr_num(index)
 
 class factory:
