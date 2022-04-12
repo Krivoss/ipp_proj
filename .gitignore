@@ -361,3 +361,5 @@ source-simple.xml
 
 # zip files
 *.zip
+
+GHtests/
