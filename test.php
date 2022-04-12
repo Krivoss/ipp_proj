@@ -11,10 +11,11 @@ $prog_args = arg_check();
 // var_dump($prog_args);
 
 $tests = test($prog_args);
-$tests->print_results_to_console();
+$tests->print_results_to_html();
 
 //                        FUNCTIONS
 
+// TODO dont let help with anything else
 function arg_check() {
     $args = getopt('h', array("help::", "directory::", "recursive::", "parse-script::",
         "int-script::", "parse-only::", "int-only::", "jexampath::", "noclean::"));
@@ -178,6 +179,14 @@ class prog_arguments {
         return $this->directory;
     }
 
+    function get_parse_script() {
+        return $this->parse_script;
+    }
+
+    function get_int_script() {
+        return $this->int_script;
+    }
+
     function get_jexam() {
         return $this->jexam;
     }
@@ -268,7 +277,7 @@ class test {
         $out;
         $parse_ret;
         $result;
-        $command = "php8.1 parse.php <".$this->src_file." >".$this->tmp_file." 2>/dev/null";
+        $command = "php8.1 ".$prog_args->get_parse_script()." <".$this->src_file." >".$this->tmp_file." 2>/dev/null";
         exec($command, $out, $parse_ret);
         $this->set_my_rc($parse_ret);
         $this->read_ref_rc();
@@ -304,7 +313,7 @@ class test {
         $out;
         $int_ret;
         $result;
-        $command = "python3.8 interpret.py --source=".$this->src_file." --input=".$this->in_file.
+        $command = "python3.8 ".$prog_args->get_int_script()." --source=".$this->src_file." --input=".$this->in_file.
                     " >".$this->tmp_file.".out 2>/dev/null";
         
         exec($command, $out, $int_ret);
@@ -400,6 +409,74 @@ class test_set {
                 echo $path.$result;
             }
         }
+    }
+
+    function print_results_to_html() {
+        $this->get_results();
+        $passed = $this->get_passed();
+        $failed = $this->get_failed();
+        echo "<!DOCTYPE html>\n<html>\n<head>";
+        echo '<style>
+        .column {
+        float: left;
+        }
+
+        .left {
+        width: 20%;
+        }
+    
+        .middle {
+        width: 30%;
+        }
+        
+        .right {
+        width: 50%;
+        }
+    
+        .row:after {
+        content: "";
+        display: table;
+        clear: both;
+        }
+        </style>';
+        echo "<title>Test results</title>
+        </head>
+        <body style=\"background-color:#1e1e1e;\">";
+        echo "<h1 style=\"color:white;\">Test results:</h1>
+        <h3 style=\"color:white;\">PASSED: ".$passed."</h3>
+        <h3 style=\"color:white;\">FAILED: ".$failed."</h3>";
+        if (count($this->failed_tests)) {
+            $test_paths = [];
+            $test_ref_rc = [];
+            $test_my_rc = [];
+            foreach ($this->failed_tests as $test) {
+                array_push($test_paths, $test->get_name());
+                array_push($test_ref_rc, $test->get_ref_rc());
+                array_push($test_my_rc, $test->get_my_rc());
+            }    
+            $div1 = '<div class="row">
+                    <h1 style="color:red;">Failed tests:</h1>
+                        <div class="column left">
+                            <h2 style="color:white;">Test paths</h2>';
+            $div2 = '</div>
+                        <div class="column middle">
+                            <h2 style="color:white;">Expected return code</h2>';
+            $div3 = '</div>
+                        <div class="column right">
+                            <h2 style="color:white;">Got return code</h2>';                        
+            $div4 = '</div>
+                    </div>';
+            for ($i = 0; $i < count($test_paths); $i++) {
+                $div1 = $div1.'<p style="color:white;">'.$test_paths[$i].'</p>';
+                $div2 = $div2.'<p style="color:white;">'.$test_ref_rc[$i].'</p>';
+                $div3 = $div3.'<p style="color:white;">'.$test_my_rc[$i].'</p>';
+            }
+            echo $div1.$div2.$div3.$div4;
+        }
+        else {
+            echo "<h1 style=\"color:green;\">ALL PASSED</h1>";
+        }
+        echo "</body>\n</html>";
     }
 }
 
