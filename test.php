@@ -2,7 +2,7 @@
 /**
 * @file test.php
 * @author Jakub Krivanek (xkriva30), FIT
-* @date March 2022 (academic year 2021/2022)
+* @date April 2022 (academic year 2021/2022)
 * @brief Testing program for parse.php and interpret.py
 */
 
@@ -15,7 +15,6 @@ $tests->print_results_to_html();
 
 //                        FUNCTIONS
 
-// TODO dont let help with anything else
 function arg_check() {
     $args = getopt('h', array("help::", "directory::", "recursive::", "parse-script::",
         "int-script::", "parse-only::", "int-only::", "jexampath::", "noclean::"));
@@ -25,6 +24,12 @@ function arg_check() {
         switch ($option) {
             case 'h':
             case 'help':
+                foreach ($args as $option => $value) {
+                    if ($option != 'h' && $option != 'help') {
+                        fwrite(STDERR, "Error: cannot combine -h or --help with other arguments\n");
+                        exit(10);
+                    }
+                }
                 echo("Usage: php8.1 test.php [options]\n\n");
                 echo("Options parametrs\n");
                 echo("\t--help\t\t\tLists avaible arguments\n");
@@ -97,7 +102,7 @@ function get_tests($prog_args) {
             $o_dir = new RecursiveDirectoryIterator($prog_args->get_directory());
         }
         catch (Exception) {
-            echo "Error: Failed to open directory: No such file or directory \n";
+            fwrite(STDERR, "Error: Failed to open directory: No such file or directory \n");
             exit(41);
         }            
         $o_iter = new RecursiveIteratorIterator($o_dir);        
@@ -107,7 +112,7 @@ function get_tests($prog_args) {
             $o_dir = new DirectoryIterator($prog_args->get_directory());
         }
         catch (Exception) {
-            echo "Error: Failed to open directory: No such file or directory \n";
+            fwrite(STDERR, "Error: Failed to open directory: No such file or directory \n");
             exit(41);
         }
         $o_iter = new IteratorIterator($o_dir);        
@@ -242,7 +247,7 @@ class test {
             file_put_contents($this->out_file, $contents);
         }
         if(!is_file($this->rc_file)){
-            $contents = '0';
+            $contents = "0\n";
             file_put_contents($this->rc_file, $contents);
         }
     }
@@ -287,7 +292,6 @@ class test {
         }
         if($parse_ret != $this->ref_rc) {
             $this->set_has_passed(false);
-            $tests->add_failed_test($this);
             return false;
         }
         elseif ($parse_ret != 0) {
@@ -299,7 +303,6 @@ class test {
             exec($diff_command, $out, $compare_ret);
             if($compare_ret != 0) {
                 $this->set_has_passed(false);
-                $tests->add_failed_test($this);
                 return false;
             }
             else {
@@ -322,7 +325,6 @@ class test {
         $ref_out = file_get_contents($this->out_file);        
         if($int_ret != $this->ref_rc) {
             $this->set_has_passed(false);
-            $tests->add_failed_test($this);
         }
         elseif ($int_ret != 0) {
             $this->set_has_passed(true);
@@ -332,7 +334,6 @@ class test {
             exec($diff_command, $out, $compare_ret);
             if($compare_ret != 0) {
                 $this->set_has_passed(false);
-                $tests->add_failed_test($this);
             }
             else {
                 $this->set_has_passed(true);
@@ -354,6 +355,7 @@ class test_set {
     public $tests;
     public $passed;
     public $failed;
+    public $passed_tests;
     public $failed_tests;
 
     function __construct() {
@@ -361,6 +363,7 @@ class test_set {
         $this->passed = 0;
         $this->failed = 0;
         $this->failed_tests = [];
+        $this->passed_tests = [];
     }
 
     function add_test($test) {
@@ -371,13 +374,19 @@ class test_set {
         array_push($this->failed_tests, $test);
     }
 
+    function add_passed_test($test) {
+        array_push($this->passed_tests, $test);
+    }
+
     function get_results() {
         foreach ($this->tests as $test) {
             if ($test->get_has_passed() == true) {
                 $this->passed++;
+                array_push($this->passed_tests, $test);
             }
             else {
                 $this->failed++;
+                array_push($this->failed_tests, $test);
             }
         }
     }
@@ -415,68 +424,40 @@ class test_set {
         $this->get_results();
         $passed = $this->get_passed();
         $failed = $this->get_failed();
-        echo "<!DOCTYPE html>\n<html>\n<head>";
+        echo "<!DOCTYPE html>\n<html>\n<head>\n";
         echo '<style>
-        .column {
-        float: left;
+        body {
+            color: white;
         }
-
-        .left {
-        width: 20%;
-        }
-    
-        .middle {
-        width: 30%;
-        }
-        
-        .right {
-        width: 50%;
-        }
-    
-        .row:after {
-        content: "";
-        display: table;
-        clear: both;
-        }
-        </style>';
+        ul {
+            padding-right: 50px;   
+        }'."\n</style>\n";
         echo "<title>Test results</title>
         </head>
         <body style=\"background-color:#1e1e1e;\">";
         echo "<h1 style=\"color:white;\">Test results:</h1>
         <h3 style=\"color:white;\">PASSED: ".$passed."</h3>
-        <h3 style=\"color:white;\">FAILED: ".$failed."</h3>";
-        if (count($this->failed_tests)) {
-            $test_paths = [];
-            $test_ref_rc = [];
-            $test_my_rc = [];
-            foreach ($this->failed_tests as $test) {
-                array_push($test_paths, $test->get_name());
-                array_push($test_ref_rc, $test->get_ref_rc());
-                array_push($test_my_rc, $test->get_my_rc());
-            }    
-            $div1 = '<div class="row">
-                    <h1 style="color:red;">Failed tests:</h1>
-                        <div class="column left">
-                            <h2 style="color:white;">Test paths</h2>';
-            $div2 = '</div>
-                        <div class="column middle">
-                            <h2 style="color:white;">Expected return code</h2>';
-            $div3 = '</div>
-                        <div class="column right">
-                            <h2 style="color:white;">Got return code</h2>';                        
-            $div4 = '</div>
-                    </div>';
-            for ($i = 0; $i < count($test_paths); $i++) {
-                $div1 = $div1.'<p style="color:white;">'.$test_paths[$i].'</p>';
-                $div2 = $div2.'<p style="color:white;">'.$test_ref_rc[$i].'</p>';
-                $div3 = $div3.'<p style="color:white;">'.$test_my_rc[$i].'</p>';
+        <h3 style=\"color:white;\">FAILED: ".$failed."</h3>\n";
+        if ($failed == 0) {
+            echo '<h1 style="color:green;">ALL PASSED</h1>';
+        }
+        if ($passed) {
+            echo '<ul style="width:30%; float:left; list-style-type:none;">';
+            echo '<h2 style="color:green;">Passed tests</h2>'."\n";
+            foreach ($this->passed_tests as $passed_test) {
+                echo "\t".'<li>'.$passed_test->get_name().'</li>'."\n";
             }
-            echo $div1.$div2.$div3.$div4;
+            echo '</ul>'."\n";     
         }
-        else {
-            echo "<h1 style=\"color:green;\">ALL PASSED</h1>";
+        if (count($this->failed_tests)) {
+            echo '<ul style="width:30%; float:left; list-style-type:none;">';
+            echo '<h2 style="color:red;">Failed tests</h2>'."\n";
+            foreach ($this->failed_tests as $failed_tests) {
+                echo "\t".'<li>'.$failed_tests->get_name().'</li>'."\n";
+            }
+            echo '</ul>'; 
         }
-        echo "</body>\n</html>";
+        echo "\n</body>\n</html>";
     }
 }
 

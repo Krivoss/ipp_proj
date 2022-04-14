@@ -1,56 +1,67 @@
+'''
+    File name: interpret_functions.py
+    Author: Jakub Krivanek (xkriva30), FIT
+    Date: April 2022 (academic year 2021/2022)
+    Python Version: 3.8
+    Brief: File for argument parsing and some helper functions
+'''
+
 import os.path
 import sys
 import re
 
-# TODO dont let help with anything else
-class prog_arguments:
+class program_arguments:
     def __init__(self):
-        self._will_print_help = False
-        self._has_source_file = False
-        self._has_input_file = False
-        self._source_file = '-'
-        self._input_file = '-'     
+        self.will_print_help = False
+        self.has_source_file = False
+        self.has_input_file = False
+        self.source_file = '-'
+        self.input_file = '-'     
 
     def process_args(self):
         for arg in sys.argv:
             # -h, --help
             if arg == '-h' or arg == '--help':
-                self._will_print_help = True
+                for a in sys.argv[1:]:
+                    if a != '-h' and a != '--help':
+                        print("Error: cannot combine -h or --help with other arguments", file=sys.stderr)
+                        exit(10)
+                self.will_print_help = True
             # --source=SOURCE
             source = re.search(r"(?<=--source=)\S+", arg)
             if source:
                 source = source.group()
                 file_validity(source, 'source') 
-                self._has_source_file = True
-                self._source_file = source
+                self.has_source_file = True
+                self.source_file = source
             # --input=INPUT
             input = re.search(r"(?<=--input=)\S+", arg)
             if input:
                 input = input.group()
                 file_validity(input, 'input')                   
-                self._has_input_file = True
-                self._input_file = input
+                self.has_input_file = True
+                self.input_file = input
 
-        if self._will_print_help:
+        if self.will_print_help:
             print_help()
             exit(0)
 
-        missing_both_files = (not self._has_input_file) and (not self._has_source_file)
+        missing_both_files = (not self.has_input_file) and (not self.has_source_file)
         if missing_both_files:
             print_help()
             print("\nError: one of the arguments --source --input is required", file=sys.stderr)
             exit(10)
 
     def get_source_file(self):
-        if self._has_source_file:
-            file = open(self._source_file)
+        if self.has_source_file:
+            file = open(self.source_file)
         else:
             file = sys.stdin
         return file
 
     def get_input_file(self):
-        if self._has_input_file:
-            file = open(self._input_file)
+        if self.has_input_file:
+            file = open(self.input_file)
         else:
             file = sys.stdin
         return file
@@ -65,23 +76,15 @@ def print_help():
         print("usage: interpret.py [-h] (--source SOURCE | --input INPUT)\n\n"
               "optional arguments:\n"
               "  -h, --help       show this help message and exit\n"
-              "  --source SOURCE  Source file with XML of source code\n"
-              "  --input INPUT    File with input for interpret", file=sys.stderr)  
-
-def error_exit_on_instruction(order, opcode, error_code, error_message, *args):
-    print(f"Error: instruction n.{order} {opcode}: {error_message}", end='', file=sys.stderr)
-    for a in args:
-        a = value_for_print(a)
-        print('', a, end='', file=sys.stderr)
-    print(file=sys.stderr)
-    exit(error_code)
+              "  --source SOURCE  source file with XML of source code\n"
+              "  --input INPUT    file with input for interpret", file=sys.stderr)
 
 def error_exit_xml_format():
     print("Error: invalid XML format", file=sys.stderr)
     exit(31)
 
 def args_process():
-    args = prog_arguments()
+    args = program_arguments()
     args.process_args()
     return args
 
