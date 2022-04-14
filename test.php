@@ -247,7 +247,7 @@ class test {
             file_put_contents($this->out_file, $contents);
         }
         if(!is_file($this->rc_file)){
-            $contents = '0';
+            $contents = "0\n";
             file_put_contents($this->rc_file, $contents);
         }
     }
@@ -425,19 +425,15 @@ class test_set {
         .column {
         float: left;
         }
-
         .left {
-        width: 20%;
-        }
-    
+        width: 40%;
+        }    
         .middle {
         width: 30%;
-        }
-        
+        }        
         .right {
-        width: 50%;
-        }
-    
+        width: 30%;
+        }    
         .row:after {
         content: "";
         display: table;
@@ -465,10 +461,10 @@ class test_set {
                             <h2 style="color:white;">Test paths</h2>';
             $div2 = '</div>
                         <div class="column middle">
-                            <h2 style="color:white;">Expected return code</h2>';
+                            <h2 style="color:white;">Expected rc</h2>';
             $div3 = '</div>
                         <div class="column right">
-                            <h2 style="color:white;">Got return code</h2>';                        
+                            <h2 style="color:white;">Got rc</h2>';                        
             $div4 = '</div>
                     </div>';
             for ($i = 0; $i < count($test_paths); $i++) {
