@@ -1,3 +1,11 @@
+'''
+    File name: interpret.py
+    Author: Jakub Krivanek (xkriva30), FIT
+    Date: April 2022 (academic year 2021/2022)
+    Python Version: 3.8
+    Brief: Program interprets xml source
+'''
+
 import xml.etree.ElementTree as ET
 
 import interpret_scopes as i_scopes

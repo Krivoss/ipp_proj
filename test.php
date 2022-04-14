@@ -2,7 +2,7 @@
 /**
 * @file test.php
 * @author Jakub Krivanek (xkriva30), FIT
-* @date March 2022 (academic year 2021/2022)
+* @date April 2022 (academic year 2021/2022)
 * @brief Testing program for parse.php and interpret.py
 */
 
@@ -15,7 +15,6 @@ $tests->print_results_to_html();
 
 //                        FUNCTIONS
 
-// TODO dont let help with anything else
 function arg_check() {
     $args = getopt('h', array("help::", "directory::", "recursive::", "parse-script::",
         "int-script::", "parse-only::", "int-only::", "jexampath::", "noclean::"));
@@ -25,6 +24,12 @@ function arg_check() {
         switch ($option) {
             case 'h':
             case 'help':
+                foreach ($args as $option => $value) {
+                    if ($option != 'h' && $option != 'help') {
+                        fwrite(STDERR, "Error: cannot combine -h or --help with other arguments\n");
+                        exit(10);
+                    }
+                }
                 echo("Usage: php8.1 test.php [options]\n\n");
                 echo("Options parametrs\n");
                 echo("\t--help\t\t\tLists avaible arguments\n");
@@ -97,7 +102,7 @@ function get_tests($prog_args) {
             $o_dir = new RecursiveDirectoryIterator($prog_args->get_directory());
         }
         catch (Exception) {
-            echo "Error: Failed to open directory: No such file or directory \n";
+            fwrite(STDERR, "Error: Failed to open directory: No such file or directory \n");
             exit(41);
         }            
         $o_iter = new RecursiveIteratorIterator($o_dir);        
@@ -107,7 +112,7 @@ function get_tests($prog_args) {
             $o_dir = new DirectoryIterator($prog_args->get_directory());
         }
         catch (Exception) {
-            echo "Error: Failed to open directory: No such file or directory \n";
+            fwrite(STDERR, "Error: Failed to open directory: No such file or directory \n");
             exit(41);
         }
         $o_iter = new IteratorIterator($o_dir);        
