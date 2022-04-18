@@ -8,12 +8,21 @@
 
 $prog_args = arg_check();
 
-// var_dump($prog_args);
-
 $tests = test($prog_args);
-$tests->print_results_to_html();
+$tests->print_results();
 
 //                        FUNCTIONS
+
+function file_validity($path) {
+    if(!file_exists($path)) {
+        fwrite(STDERR, "Error: file or folder does not exit ".$path."\n");
+        exit(11);
+    }
+    elseif (!is_readable($path)) {
+        fwrite(STDERR, "Error: file is not readable ".$path."\n");
+        exit(11);
+    }
+}
 
 function arg_check() {
     $args = getopt('h', array("help::", "directory::", "recursive::", "parse-script::",
@@ -141,27 +150,35 @@ class prog_arguments {
     function __construct() {
         $this->mode = 'both';
         $this->directory = "./";
-        $this->parse_script = "parse.php";
-        $this->int_script = "interpret.py";
+        $this->parse_script = "./parse.php";
+        $this->int_script = "./interpret.py";
         $this->recursive = false;
         $this->jexam = "/pub/courses/ipp/jexamxml/jexamxml.jar";
         $this->noclean = false;
     }
 
     function set_directory($directory) {
+        file_validity($directory);
         $this->directory = $directory;
     }
 
     function set_parse_script($parse_script) {
+        file_validity($parse_script);
         $this->parse_script = $parse_script;
     }
 
     function set_int_script($int_script) {
+        file_validity($int_script);
         $this->int_script = $int_script;
     }
 
     function set_jexam($jexam_path) {
+        file_validity($jexam_path."jexamxml.jar");
         $this->jexam = $jexam_path."jexamxml.jar";
+    }
+    
+    function set_mode($mode) {
+        $this->mode = $mode;
     }
 
     function recursive() {
@@ -170,11 +187,7 @@ class prog_arguments {
 
     function noclean() {
         $this->noclean = true;
-    }
-
-    function set_mode($mode) {
-        $this->mode = $mode;
-    }
+    }    
 
     function get_mode() {
         return $this->mode;
@@ -217,64 +230,6 @@ class test {
     function __construct($name) {
         $this->name = $name;
         $this->get_files();
-    }
-
-    function set_name($name) {
-        $this->name = $name;
-    }
-
-    function set_has_passed($has_passed) {
-        $this->has_passed = $has_passed;
-    }
-
-    function get_has_passed() {
-        return $this->has_passed;
-    }
-
-    function get_files() {
-        $this->src_file = $this->name.".src";
-        $this->in_file = $this->name.".in";
-        $this->out_file = $this->name.".out";
-        $this->rc_file = $this->name.".rc";
-        $this->tmp_file = $this->name.".tmp";
-
-        if(!is_file($this->in_file)){
-            $contents = '';
-            file_put_contents($this->in_file, $contents);
-        }
-        if(!is_file($this->out_file)){
-            $contents = '';
-            file_put_contents($this->out_file, $contents);
-        }
-        if(!is_file($this->rc_file)){
-            $contents = "0\n";
-            file_put_contents($this->rc_file, $contents);
-        }
-    }
-
-    function get_src_file() {
-        return $this->src_file;
-    }
-
-    function get_name() {
-        return $this->name;
-    }
-
-    function get_ref_rc() {
-        return $this->ref_rc;
-    }
-
-    function read_ref_rc() {
-        $this->ref_rc = trim(file_get_contents($this->rc_file), "\n");
-        return $this->ref_rc;
-    }
-
-    function set_my_rc($my_rc) {
-        $this->my_rc = $my_rc;
-    }
-
-    function get_my_rc() {
-        return $this->my_rc;
     }
 
     function parse($prog_args, $tests, $before_interpret) {
@@ -348,7 +303,64 @@ class test {
         $this->src_file = $this->tmp_file;
         $this->interpret($prog_args, $tests);
     }
-    
+
+    function set_name($name) {
+        $this->name = $name;
+    }
+
+    function set_has_passed($has_passed) {
+        $this->has_passed = $has_passed;
+    }
+
+    function set_my_rc($my_rc) {
+        $this->my_rc = $my_rc;
+    }
+
+    function get_has_passed() {
+        return $this->has_passed;
+    }
+
+    function get_files() {
+        $this->src_file = $this->name.".src";
+        $this->in_file = $this->name.".in";
+        $this->out_file = $this->name.".out";
+        $this->rc_file = $this->name.".rc";
+        $this->tmp_file = $this->name.".tmp";
+
+        if(!is_file($this->in_file)){
+            $contents = '';
+            file_put_contents($this->in_file, $contents);
+        }
+        if(!is_file($this->out_file)){
+            $contents = '';
+            file_put_contents($this->out_file, $contents);
+        }
+        if(!is_file($this->rc_file)){
+            $contents = "0\n";
+            file_put_contents($this->rc_file, $contents);
+        }
+    }
+
+    function get_src_file() {
+        return $this->src_file;
+    }
+
+    function get_name() {
+        return $this->name;
+    }
+
+    function get_ref_rc() {
+        return $this->ref_rc;
+    }
+
+    function get_my_rc() {
+        return $this->my_rc;
+    }
+
+    function read_ref_rc() {
+        $this->ref_rc = trim(file_get_contents($this->rc_file), "\n");
+        return $this->ref_rc;
+    }    
 }
 
 class test_set {
@@ -403,24 +415,7 @@ class test_set {
         return $this->tests;
     }
 
-    function print_results_to_console() {
-        $this->get_results();
-        $passed = $this->get_passed();
-        $failed = $this->get_failed();
-        echo("TEST RESULTS:\n\t\033[01;32mPASSED: ".$passed."\033[0m\n\t\033[01;31mFAILED: ".$failed."\033[0m\n");
-        if (count($this->failed_tests)) {
-            $test_paths = [];
-            $test_result = [];
-            echo "\nFAILED TESTS:\n";
-            foreach ($this->failed_tests as $test) {
-                $path = "\t".$test->get_name();           
-                $result = "\tEXPECTED: ".$test->get_ref_rc()."\tGOT: ".$test->get_my_rc()."\n";
-                echo $path.$result;
-            }
-        }
-    }
-
-    function print_results_to_html() {
+    function print_results() {
         $this->get_results();
         $passed = $this->get_passed();
         $failed = $this->get_failed();
@@ -438,7 +433,7 @@ class test_set {
         echo "<h1 style=\"color:white;\">Test results:</h1>
         <h3 style=\"color:white;\">PASSED: ".$passed."</h3>
         <h3 style=\"color:white;\">FAILED: ".$failed."</h3>\n";
-        if ($failed == 0) {
+        if ($failed == 0 && $passed != 0) {
             echo '<h1 style="color:green;">ALL PASSED</h1>';
         }
         if ($passed) {

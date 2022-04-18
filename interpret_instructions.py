@@ -33,21 +33,21 @@ class instruction:
         self.opcode = opcode
         self.instr_list.append(self)
 
-    def get_list(self):
-        return self.instr_list
-    
-    def get_order(self):
-        return self.order
-
-    def get_opcode(self):
-        return self.opcode
-
     def execute(self, scopes :  i_scopes.program_scopes):
         self.error_exit(99, "intruction not implemented")
+
+    def error_exit(self, error_code, error_message, *args):
+        print(f"Error: instruction n.{self.order} {self.opcode}: {error_message}", end='', file=sys.stderr)
+        for a in args:
+            a = i_func.value_for_print(a)
+            print('', a, end='', file=sys.stderr)
+        print(file=sys.stderr)
+        exit(error_code)
     
-    def run(self, scopes :  i_scopes.program_scopes, input_file):
+    @classmethod
+    def run(cls, scopes :  i_scopes.program_scopes, input_file):
         try:
-            i = self.instr_list[scopes.get_instr_num()]
+            i = cls.instr_list[scopes.get_instr_num()]
         except IndexError:
             return
         if i.get_opcode() == 'READ':
@@ -55,7 +55,7 @@ class instruction:
         else:
             i.execute(scopes)
         scopes.inc_instr_num()
-        self.run(scopes, input_file)  
+        cls.run(scopes, input_file)  
     
     def sort_instr_list(self):
         i_list = self.get_list()
@@ -73,13 +73,14 @@ class instruction:
                     return index - 1
         self.error_exit(52, "label not defined -", label)
 
-    def error_exit(self, error_code, error_message, *args):
-        print(f"Error: instruction n.{self.order} {self.opcode}: {error_message}", end='', file=sys.stderr)
-        for a in args:
-            a = i_func.value_for_print(a)
-            print('', a, end='', file=sys.stderr)
-        print(file=sys.stderr)
-        exit(error_code)
+    def get_list(self):
+        return self.instr_list
+    
+    def get_order(self):
+        return self.order
+
+    def get_opcode(self):
+        return self.opcode
 
 # no arguments
 class no_operands_instr(instruction):
@@ -316,13 +317,10 @@ class instr_read(two_arg_instr):
 
     def execute(self, scopes: i_scopes.program_scopes, input_file):
         try:
-            if input_file.name == '<stdin>':
-                val = input()
-            else:
-                val = input_file.readline()
-                if val:
-                    if val[-1] == "\n":
-                        val = val[:-1]
+            val = input_file.readline()
+            if val:
+                if val[-1] == "\n":
+                    val = val[:-1]                
         except EOFError:
                 scopes.set_var(self, self.arg1.get_value(self), 'nil', 'nil')
                 return
@@ -600,6 +598,20 @@ class instr_jumpifneq(three_arg_instr):
 
 class factory:
     @classmethod
+    def create_instruction(cls, instr):
+        order = instr.get("order")
+        opcode = instr.get("opcode")
+        args = {}
+        for i in range(1,4):
+            arg = instr.findall(f"./arg{i}")
+            if len(arg) > 1:
+                i_func.error_exit_on_instruction(order, opcode, 32,
+                    f"instruction has more arguments with the same number - arg{i}")
+            if arg:
+                args[f"arg{i}"] = cls.get_argument(arg[0], order, opcode)
+        return cls.get_instruction(order, opcode, **args)
+        
+    @classmethod
     def get_instruction(cls, order : int, opcode : str,
                 arg1 : argument = None, arg2 : argument = None, arg3 : argument = None):
         no_argument = {
@@ -679,17 +691,3 @@ class factory:
         else:
             arg_content = arg.text
         return argument(arg_type, arg_content)
-
-    @classmethod
-    def create_instruction(cls, instr):
-        order = instr.get("order")
-        opcode = instr.get("opcode")
-        args = {}
-        for i in range(1,4):
-            arg = instr.findall(f"./arg{i}")
-            if len(arg) > 1:
-                i_func.error_exit_on_instruction(order, opcode, 32,
-                    f"instruction has more arguments with the same number - arg{i}")
-            if arg:
-                args[f"arg{i}"] = cls.get_argument(arg[0], order, opcode)
-        return cls.get_instruction(order, opcode, **args)
