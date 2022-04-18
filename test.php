@@ -162,7 +162,7 @@ class prog_arguments {
         $this->parse_script = "./parse.php";
         $this->int_script = "./interpret.py";
         $this->recursive = false;
-        $this->jexam = "/pub/courses/ipp/jexamxml/jexamxml.jar";
+        $this->jexam = "/pub/courses/ipp/jexamxml/";
         $this->noclean = false;
     }
 
@@ -183,7 +183,8 @@ class prog_arguments {
 
     function set_jexam($jexam_path) {
         file_validity($jexam_path."jexamxml.jar");
-        $this->jexam = $jexam_path."jexamxml.jar";
+        file_validity($jexam_path."options");
+        $this->jexam = $jexam_path;
     }
     
     function set_mode($mode) {
@@ -265,7 +266,7 @@ class test {
             return true;
         }
         else {            
-            $diff_command = "java -jar ".$prog_args->get_jexam()." ".$this->tmp_file." ".$this->out_file." /dev/null options";
+            $diff_command = "java -jar ".$prog_args->get_jexam().".jexamxml.jar ".$this->tmp_file." ".$this->out_file." /dev/null ".$prog_args->get_jexam()."options";
             exec($diff_command, $out, $compare_ret);
             if($compare_ret != 0) {
                 $this->set_has_passed(false);
