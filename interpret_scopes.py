@@ -11,6 +11,9 @@ import sys
 import interpret_fuctions as i_func
 
 class variable:
+    """
+    A class to represent a variable
+    """
     def __init__(self, value = None, var_type = ''):
         self.value = value
         self.var_type = var_type
@@ -33,6 +36,9 @@ class variable:
         self.initialized = True    
 
 class scope:
+    """
+    A class to represent a scope
+    """
     def __init__(self, scope_type):
         self.var_list = {}
         self.scope_type = scope_type
@@ -59,6 +65,9 @@ class scope:
             self.var_list[name].set_value(value, var_type)
 
 class program_scopes:
+    """
+    A class to represent scopes, stack and return stack
+    """
     def __init__(self):
         self.gf_scope = scope('GF')
         self.tf_scope = None
@@ -68,6 +77,9 @@ class program_scopes:
         self.return_stack = []
 
     def def_var(self, instr, name) -> None:
+        """
+        Defines variable, frame decided based on variable prefix 
+        """
         scope_prefix = name[:2]
         var_name = name[3:]
         if scope_prefix == 'GF':
@@ -81,6 +93,9 @@ class program_scopes:
             exit(99)
 
     def get_var(self, instr, name) -> variable:
+        """
+        Returns variable with given name
+        """
         scope_prefix = name[:2]
         var_name = name[3:]
         if scope_prefix == 'GF':
@@ -95,6 +110,9 @@ class program_scopes:
         
 
     def set_var(self, instr, name, value, value_type) -> None:
+        """
+        Sets value to a variable with given name
+        """
         scope_prefix = name[:2]
         var_name = name[3:]
         if scope_prefix == 'GF':

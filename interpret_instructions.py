@@ -13,6 +13,9 @@ import interpret_scopes as i_scopes
 import interpret_fuctions as i_func
 
 class argument:
+    """
+    A class to represent instruction arguments
+    """
     def __init__(self, type : str, content):
         self.type = type
         self.content = content
@@ -27,6 +30,10 @@ class argument:
         return self.type
 
 class instruction:
+    """
+    A class to represent instruction instructions
+    """
+    # shared list of all instructions
     instr_list = []
     def __init__(self, order : int, opcode : str = None):
         self.order = int(order)
@@ -34,9 +41,17 @@ class instruction:
         self.instr_list.append(self)
 
     def execute(self, scopes :  i_scopes.program_scopes):
+        """
+        Executes instruction
+
+        Each instruction should implement its own execute method
+        """
         self.error_exit(99, "intruction not implemented")
 
     def error_exit(self, error_code, error_message, *args):
+        """
+        Prints error to stderr and exits with given error code
+        """
         print(f"Error: instruction n.{self.order} {self.opcode}: {error_message}", end='', file=sys.stderr)
         for a in args:
             a = i_func.value_for_print(a)
@@ -46,6 +61,9 @@ class instruction:
     
     @classmethod
     def run(cls, scopes :  i_scopes.program_scopes, input_file):
+        """
+        Executes all instructions one by one
+        """
         try:
             i = cls.instr_list[scopes.get_instr_num()]
         except IndexError:
@@ -58,6 +76,9 @@ class instruction:
         cls.run(scopes, input_file)  
     
     def sort_instr_list(self):
+        """
+        Sorts instructions based on order
+        """
         i_list = self.get_list()
         i_list.sort(key=lambda x: x.get_order())
         for index, i in enumerate(i_list):
@@ -66,6 +87,9 @@ class instruction:
                     self.error_exit(32, "order duplicate")
 
     def find_label(self, label : str):
+        """
+        Return index of given label
+        """
         i_list = self.get_list()
         for index, instr in enumerate(i_list):
             if instr.get_opcode() == 'LABEL':
@@ -599,6 +623,9 @@ class instr_jumpifneq(three_arg_instr):
 class factory:
     @classmethod
     def create_instruction(cls, instr):
+        """
+        Returns created instruction with all arguments
+        """
         order = instr.get("order")
         opcode = instr.get("opcode")
         args = {}
@@ -610,7 +637,7 @@ class factory:
             if arg:
                 args[f"arg{i}"] = cls.get_argument(arg[0], order, opcode)
         return cls.get_instruction(order, opcode, **args)
-        
+
     @classmethod
     def get_instruction(cls, order : int, opcode : str,
                 arg1 : argument = None, arg2 : argument = None, arg3 : argument = None):

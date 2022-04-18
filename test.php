@@ -13,6 +13,7 @@ $tests->print_results();
 
 //                        FUNCTIONS
 
+// Exits if given file is not readable or if folder does not exist
 function file_validity($path) {
     if(!file_exists($path)) {
         fwrite(STDERR, "Error: file or folder does not exit ".$path."\n");
@@ -24,6 +25,8 @@ function file_validity($path) {
     }
 }
 
+// If arguments are valid the arguments will be executed or the data will be stored in the prog_arguments object
+// Returns prog_arguments object
 function arg_check() {
     $args = getopt('h', array("help::", "directory::", "recursive::", "parse-script::",
         "int-script::", "parse-only::", "int-only::", "jexampath::", "noclean::"));
@@ -85,6 +88,8 @@ function arg_check() {
     return $prog_args;
 }
 
+// Goes through all found tests and runs them
+// Returns test_set object with all done tests
 function test($prog_args) {
     $tests = get_tests($prog_args);
     foreach ($tests->get_tests() as $test) {
@@ -105,6 +110,8 @@ function test($prog_args) {
     return $tests;
 }
 
+// Finds all tests in given directory
+// Returns test_set object with all tests
 function get_tests($prog_args) {
     if ($prog_args->recursive) {
         try {
@@ -138,6 +145,8 @@ function get_tests($prog_args) {
 }
 
 //                        CLASSES
+
+// A class to represent program arguments
 class prog_arguments {
     public $mode;
     public $directory;
@@ -214,6 +223,7 @@ class prog_arguments {
     }
 }
 
+// A class to represent a test
 class test {
     public $name;
     public $src_file;
@@ -232,6 +242,7 @@ class test {
         $this->get_files();
     }
 
+    // method for testing part with parse.php script
     function parse($prog_args, $tests, $before_interpret) {
         $file = $this->get_name();
         $out;
@@ -267,6 +278,7 @@ class test {
         }
     }
 
+    // method for testing part with interpret.py script
     function interpret($prog_args, $tests) {
         $out;
         $int_ret;
@@ -296,6 +308,7 @@ class test {
         }
     }
 
+    // method for testing part with both parse.php and interpret.py script
     function parse_and_interpret($prog_args, $tests) {
         if ($this->parse($prog_args, $tests, true) == false) {
             return;
@@ -363,6 +376,7 @@ class test {
     }    
 }
 
+// A class to represent all tests
 class test_set {
     public $tests;
     public $passed;
@@ -390,6 +404,7 @@ class test_set {
         array_push($this->passed_tests, $test);
     }
 
+    // goes through all tests and counts passed and failed tests
     function get_results() {
         foreach ($this->tests as $test) {
             if ($test->get_has_passed() == true) {
@@ -415,6 +430,7 @@ class test_set {
         return $this->tests;
     }
 
+    // prints test results to stdout
     function print_results() {
         $this->get_results();
         $passed = $this->get_passed();
