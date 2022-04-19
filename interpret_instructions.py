@@ -52,7 +52,7 @@ class instruction:
         """
         Prints error to stderr and exits with given error code
         """
-        print(f"Error: instruction n.{self.order} {self.opcode}: {error_message}", end='', file=sys.stderr)
+        print(f"Error: instruction o.{self.order} {self.opcode}: {error_message}", end='', file=sys.stderr)
         for a in args:
             a = i_func.value_for_print(a)
             print('', a, end='', file=sys.stderr)
@@ -701,7 +701,7 @@ class factory:
     def get_argument(cls, arg, order, opcode):
         arg_type = arg.get('type')
         if not arg_type:
-            print(f"Error: instruction n.{order} {opcode}: argument {arg.tag} has no type atribute")
+            print(f"Error: instruction o.{order} {opcode}: argument {arg.tag} has no type atribute")
             exit(32)
         if arg_type == 'int':
             arg_content = int(arg.text)        
