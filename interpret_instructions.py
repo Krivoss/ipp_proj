@@ -107,11 +107,11 @@ class instruction:
         return self.opcode
 
 # no arguments
-class no_operands_instr(instruction):
+class no_arg_instr(instruction):
     def __init__(self, order : int):
         super().__init__(order)
 
-class instr_createframe(no_operands_instr):
+class instr_createframe(no_arg_instr):
     def __init__(self, order : int):
         super().__init__(order)
         self.opcode = "CREATEFRAME"
@@ -119,7 +119,7 @@ class instr_createframe(no_operands_instr):
     def execute(self, scopes : i_scopes.program_scopes):
         scopes.createframe()
 
-class instr_pushframe(no_operands_instr):
+class instr_pushframe(no_arg_instr):
     def __init__(self, order : int):
         super().__init__(order)
         self.opcode = "PUSHFRAME"
@@ -127,7 +127,7 @@ class instr_pushframe(no_operands_instr):
     def execute(self, scopes : i_scopes.program_scopes):
         scopes.pushframe(self)
 
-class instr_popframe(no_operands_instr):
+class instr_popframe(no_arg_instr):
     def __init__(self, order : int):
         super().__init__(order)
         self.opcode = "POPFRAME"
@@ -135,7 +135,7 @@ class instr_popframe(no_operands_instr):
     def execute(self, scopes : i_scopes.program_scopes):
         scopes.popframe(self)
 
-class instr_return(no_operands_instr):
+class instr_return(no_arg_instr):
     def __init__(self, order : int):
         super().__init__(order)
         self.opcode = "RETURN"
@@ -144,7 +144,7 @@ class instr_return(no_operands_instr):
         index = scopes.get_return_num(self) - 1
         scopes.set_intr_num(index)
 
-class instr_break(no_operands_instr):
+class instr_break(no_arg_instr):
     def __init__(self, order : int):
         super().__init__(order)
         self.opcode = "BREAK"

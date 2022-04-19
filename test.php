@@ -6,7 +6,8 @@
 * @brief Testing program for parse.php and interpret.py
 */
 
-$prog_args = arg_check();
+$prog_args = new progam_arguments();
+$prog_args->arg_check();
 
 $tests = test($prog_args);
 $tests->print_results();
@@ -23,69 +24,6 @@ function file_validity($path) {
         fwrite(STDERR, "Error: file is not readable ".$path."\n");
         exit(11);
     }
-}
-
-// If arguments are valid the arguments will be executed or the data will be stored in the prog_arguments object
-// Returns prog_arguments object
-function arg_check() {
-    $args = getopt('h', array("help::", "directory::", "recursive::", "parse-script::",
-        "int-script::", "parse-only::", "int-only::", "jexampath::", "noclean::"));
-
-    $prog_args = new prog_arguments();
-    foreach ($args as $option => $value) {
-        switch ($option) {
-            case 'h':
-            case 'help':
-                foreach ($args as $option => $value) {
-                    if ($option != 'h' && $option != 'help') {
-                        fwrite(STDERR, "Error: cannot combine -h or --help with other arguments\n");
-                        exit(10);
-                    }
-                }
-                echo("Usage: php8.1 test.php [options]\n\n");
-                echo("Options parametrs\n");
-                echo("\t--help\t\t\tLists avaible arguments\n");
-                echo("\t--directory=path\tTests will be searched in given directory\n");
-                echo("\t--recursive\t\tTests will also be searched recursivly in given directory\n");
-                echo("\t--parse-script=file\tFile with script for analysis of source code in IPPcode22\n");
-                echo("\t--int-script=file\tFile with XML interpret script\n");
-                echo("\t--parse-only\t\tOnly parser will be tested\n");
-                echo("\t--int-only\t\tOnly interpret will be tested\n");
-                echo("\t--jexampath=path\tPath to jaxamxml.jar file\n");
-                echo("\t--noclean\t\tAuxilliary files will not be deleted during testing\n");
-                exit(0);
-                break;
-            case 'directory':
-                $prog_args->set_directory($value);
-                break;
-            case 'recursive':
-                $prog_args->recursive();  
-                break;
-            case 'parse-script':
-                $prog_args->set_parse_script($value);
-                break;
-            case 'int-script':
-                $prog_args->set_int_script($value);
-                break;            
-            case 'parse-only':
-                $prog_args->set_mode('parse-only');  
-                break;
-            case 'int-only':
-                $prog_args->set_mode('int-only');  
-                break;
-            case 'jexampath':
-                $prog_args->set_jexam($value);
-                break;
-            case 'noclean':
-                $prog_args->noclean();
-                break;
-            default:
-                printf("Argument processing fail\n");
-                exit(99);
-                break;
-        }
-    }
-    return $prog_args;
 }
 
 // Goes through all found tests and runs them
@@ -147,7 +85,7 @@ function get_tests($prog_args) {
 //                        CLASSES
 
 // A class to represent program arguments
-class prog_arguments {
+class progam_arguments {
     public $mode;
     public $directory;
     public $parse_script;
@@ -164,6 +102,67 @@ class prog_arguments {
         $this->recursive = false;
         $this->jexam = "/pub/courses/ipp/jexamxml/";
         $this->noclean = false;
+    }
+
+    // If arguments are valid the arguments will be executed or the data will be stored in the prog_arguments object
+    // Returns prog_arguments object
+    function arg_check() {
+        $args = getopt('h', array("help::", "directory::", "recursive::", "parse-script::",
+            "int-script::", "parse-only::", "int-only::", "jexampath::", "noclean::"));
+
+        foreach ($args as $option => $value) {
+            switch ($option) {
+                case 'h':
+                case 'help':
+                    foreach ($args as $option => $value) {
+                        if ($option != 'h' && $option != 'help') {
+                            fwrite(STDERR, "Error: cannot combine -h or --help with other arguments\n");
+                            exit(10);
+                        }
+                    }
+                    echo("Usage: php8.1 test.php [options]\n\n");
+                    echo("Options parametrs\n");
+                    echo("\t--help\t\t\tLists avaible arguments\n");
+                    echo("\t--directory=path\tTests will be searched in given directory\n");
+                    echo("\t--recursive\t\tTests will also be searched recursivly in given directory\n");
+                    echo("\t--parse-script=file\tFile with script for analysis of source code in IPPcode22\n");
+                    echo("\t--int-script=file\tFile with XML interpret script\n");
+                    echo("\t--parse-only\t\tOnly parser will be tested\n");
+                    echo("\t--int-only\t\tOnly interpret will be tested\n");
+                    echo("\t--jexampath=path\tPath to jaxamxml.jar file\n");
+                    echo("\t--noclean\t\tAuxilliary files will not be deleted during testing\n");
+                    exit(0);
+                    break;
+                case 'directory':
+                    $this->set_directory($value);
+                    break;
+                case 'recursive':
+                    $this->recursive();  
+                    break;
+                case 'parse-script':
+                    $this->set_parse_script($value);
+                    break;
+                case 'int-script':
+                    $this->set_int_script($value);
+                    break;            
+                case 'parse-only':
+                    $this->set_mode('parse-only');  
+                    break;
+                case 'int-only':
+                    $this->set_mode('int-only');  
+                    break;
+                case 'jexampath':
+                    $this->set_jexam($value);
+                    break;
+                case 'noclean':
+                    $this->noclean();
+                    break;
+                default:
+                    printf("Argument processing fail\n");
+                    exit(99);
+                    break;
+            }
+        }
     }
 
     function set_directory($directory) {
