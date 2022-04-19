@@ -6,7 +6,7 @@
     Brief: File for argument parsing and some helper functions
 '''
 
-import os.path
+import os
 import sys
 import re
 
@@ -87,6 +87,9 @@ def file_validity(file_str, type):
     path = os.path.normpath(file_str)
     if not os.path.isfile(path):
         print(f"Error: --{type} file \"{file_str}\" does not exist", file=sys.stderr)
+        exit(11)
+    if not os.access(file_str, os.R_OK):
+        print(f"Error: --{type} file \"{file_str}\" is not readable", file=sys.stderr)
         exit(11)
 
 def print_help():
