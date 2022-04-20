@@ -6,76 +6,28 @@
 * @brief Testing program for parse.php and interpret.py
 */
 
-$prog_args = arg_check();
-
-// var_dump($prog_args);
+$prog_args = new progam_arguments();
+$prog_args->arg_check();
 
 $tests = test($prog_args);
-$tests->print_results_to_html();
+$tests->print_results();
 
 //                        FUNCTIONS
 
-function arg_check() {
-    $args = getopt('h', array("help::", "directory::", "recursive::", "parse-script::",
-        "int-script::", "parse-only::", "int-only::", "jexampath::", "noclean::"));
-
-    $prog_args = new prog_arguments();
-    foreach ($args as $option => $value) {
-        switch ($option) {
-            case 'h':
-            case 'help':
-                foreach ($args as $option => $value) {
-                    if ($option != 'h' && $option != 'help') {
-                        fwrite(STDERR, "Error: cannot combine -h or --help with other arguments\n");
-                        exit(10);
-                    }
-                }
-                echo("Usage: php8.1 test.php [options]\n\n");
-                echo("Options parametrs\n");
-                echo("\t--help\t\t\tLists avaible arguments\n");
-                echo("\t--directory=path\tTests will be searched in given directory\n");
-                echo("\t--recursive\t\tTests will also be searched recursivly in given directory\n");
-                echo("\t--parse-script=file\tFile with script for analysis of source code in IPPcode22\n");
-                echo("\t--int-script=file\tFile with XML interpret script\n");
-                echo("\t--parse-only\t\tOnly parser will be tested\n");
-                echo("\t--int-only\t\tOnly interpret will be tested\n");
-                echo("\t--jexampath=path\tPath to jaxamxml.jar file\n");
-                echo("\t--noclean\t\tAuxilliary files will not be deleted during testing\n");
-                exit(0);
-                break;
-            case 'directory':
-                $prog_args->set_directory($value);
-                break;
-            case 'recursive':
-                $prog_args->recursive();  
-                break;
-            case 'parse-script':
-                $prog_args->set_parse_script($value);
-                break;
-            case 'int-script':
-                $prog_args->set_int_script($value);
-                break;            
-            case 'parse-only':
-                $prog_args->set_mode('parse-only');  
-                break;
-            case 'int-only':
-                $prog_args->set_mode('int-only');  
-                break;
-            case 'jexampath':
-                $prog_args->set_jexam($value);
-                break;
-            case 'noclean':
-                $prog_args->noclean();
-                break;
-            default:
-                printf("Argument processing fail\n");
-                exit(99);
-                break;
-        }
+// Exits if given file is not readable or if folder does not exist
+function file_validity($path) {
+    if(!file_exists($path)) {
+        fwrite(STDERR, "Error: file or folder does not exit ".$path."\n");
+        exit(11);
     }
-    return $prog_args;
+    elseif (!is_readable($path)) {
+        fwrite(STDERR, "Error: file is not readable ".$path."\n");
+        exit(11);
+    }
 }
 
+// Goes through all found tests and runs them
+// Returns test_set object with all done tests
 function test($prog_args) {
     $tests = get_tests($prog_args);
     foreach ($tests->get_tests() as $test) {
@@ -96,6 +48,8 @@ function test($prog_args) {
     return $tests;
 }
 
+// Finds all tests in given directory
+// Returns test_set object with all tests
 function get_tests($prog_args) {
     if ($prog_args->recursive) {
         try {
@@ -129,7 +83,9 @@ function get_tests($prog_args) {
 }
 
 //                        CLASSES
-class prog_arguments {
+
+// A class to represent program arguments
+class progam_arguments {
     public $mode;
     public $directory;
     public $parse_script;
@@ -141,27 +97,97 @@ class prog_arguments {
     function __construct() {
         $this->mode = 'both';
         $this->directory = "./";
-        $this->parse_script = "parse.php";
-        $this->int_script = "interpret.py";
+        $this->parse_script = "./parse.php";
+        $this->int_script = "./interpret.py";
         $this->recursive = false;
-        $this->jexam = "/pub/courses/ipp/jexamxml/jexamxml.jar";
+        $this->jexam = "/pub/courses/ipp/jexamxml/";
         $this->noclean = false;
     }
 
+    // If arguments are valid the arguments will be executed or the data will be stored in the prog_arguments object
+    // Returns prog_arguments object
+    function arg_check() {
+        $args = getopt('h', array("help::", "directory::", "recursive::", "parse-script::",
+            "int-script::", "parse-only::", "int-only::", "jexampath::", "noclean::"));
+
+        foreach ($args as $option => $value) {
+            switch ($option) {
+                case 'h':
+                case 'help':
+                    foreach ($args as $option => $value) {
+                        if ($option != 'h' && $option != 'help') {
+                            fwrite(STDERR, "Error: cannot combine -h or --help with other arguments\n");
+                            exit(10);
+                        }
+                    }
+                    echo("Usage: php8.1 test.php [options]\n\n");
+                    echo("Options parametrs\n");
+                    echo("\t--help\t\t\tLists avaible arguments\n");
+                    echo("\t--directory=path\tTests will be searched in given directory\n");
+                    echo("\t--recursive\t\tTests will also be searched recursivly in given directory\n");
+                    echo("\t--parse-script=file\tFile with script for analysis of source code in IPPcode22\n");
+                    echo("\t--int-script=file\tFile with XML interpret script\n");
+                    echo("\t--parse-only\t\tOnly parser will be tested\n");
+                    echo("\t--int-only\t\tOnly interpret will be tested\n");
+                    echo("\t--jexampath=path\tPath to jaxamxml.jar file\n");
+                    echo("\t--noclean\t\tAuxilliary files will not be deleted during testing\n");
+                    exit(0);
+                    break;
+                case 'directory':
+                    $this->set_directory($value);
+                    break;
+                case 'recursive':
+                    $this->recursive();  
+                    break;
+                case 'parse-script':
+                    $this->set_parse_script($value);
+                    break;
+                case 'int-script':
+                    $this->set_int_script($value);
+                    break;            
+                case 'parse-only':
+                    $this->set_mode('parse-only');  
+                    break;
+                case 'int-only':
+                    $this->set_mode('int-only');  
+                    break;
+                case 'jexampath':
+                    $this->set_jexam($value);
+                    break;
+                case 'noclean':
+                    $this->noclean();
+                    break;
+                default:
+                    printf("Argument processing fail\n");
+                    exit(99);
+                    break;
+            }
+        }
+    }
+
     function set_directory($directory) {
+        file_validity($directory);
         $this->directory = $directory;
     }
 
     function set_parse_script($parse_script) {
+        file_validity($parse_script);
         $this->parse_script = $parse_script;
     }
 
     function set_int_script($int_script) {
+        file_validity($int_script);
         $this->int_script = $int_script;
     }
 
     function set_jexam($jexam_path) {
-        $this->jexam = $jexam_path."jexamxml.jar";
+        file_validity($jexam_path."jexamxml.jar");
+        file_validity($jexam_path."options");
+        $this->jexam = $jexam_path;
+    }
+    
+    function set_mode($mode) {
+        $this->mode = $mode;
     }
 
     function recursive() {
@@ -170,11 +196,7 @@ class prog_arguments {
 
     function noclean() {
         $this->noclean = true;
-    }
-
-    function set_mode($mode) {
-        $this->mode = $mode;
-    }
+    }    
 
     function get_mode() {
         return $this->mode;
@@ -201,6 +223,7 @@ class prog_arguments {
     }
 }
 
+// A class to represent a test
 class test {
     public $name;
     public $src_file;
@@ -219,12 +242,91 @@ class test {
         $this->get_files();
     }
 
+    // method for testing part with parse.php script
+    function parse($prog_args, $tests, $before_interpret) {
+        $file = $this->get_name();
+        $out;
+        $parse_ret;
+        $result;
+        $command = "php8.1 ".$prog_args->get_parse_script()." <".$this->src_file." >".$this->tmp_file." 2>/dev/null";
+        exec($command, $out, $parse_ret);
+        $this->set_my_rc($parse_ret);
+        $this->read_ref_rc();
+        if ($before_interpret && $parse_ret == 0) {
+            $this->set_has_passed(true);
+            return true;
+        }
+        if($parse_ret != $this->ref_rc) {
+            $this->set_has_passed(false);
+            return false;
+        }
+        elseif ($parse_ret != 0) {
+            $this->set_has_passed(true);
+            return true;
+        }
+        else {            
+            $diff_command = "java -jar ".$prog_args->get_jexam().".jexamxml.jar ".$this->tmp_file." ".$this->out_file." /dev/null ".$prog_args->get_jexam()."options";
+            exec($diff_command, $out, $compare_ret);
+            if($compare_ret != 0) {
+                $this->set_has_passed(false);
+                return false;
+            }
+            else {
+                $this->set_has_passed(true);
+                return true;
+            }
+        }
+    }
+
+    // method for testing part with interpret.py script
+    function interpret($prog_args, $tests) {
+        $out;
+        $int_ret;
+        $result;
+        $command = "python3.8 ".$prog_args->get_int_script()." --source=".$this->src_file." --input=".$this->in_file.
+                    " >".$this->tmp_file.".out 2>/dev/null";
+        
+        exec($command, $out, $int_ret);
+        $this->set_my_rc($int_ret);
+        $this->read_ref_rc();
+        $ref_out = file_get_contents($this->out_file);        
+        if($int_ret != $this->ref_rc) {
+            $this->set_has_passed(false);
+        }
+        elseif ($int_ret != 0) {
+            $this->set_has_passed(true);
+        }
+        else {
+            $diff_command = "diff ".$this->tmp_file.".out ".$this->out_file." >/dev/null";
+            exec($diff_command, $out, $compare_ret);
+            if($compare_ret != 0) {
+                $this->set_has_passed(false);
+            }
+            else {
+                $this->set_has_passed(true);
+            }
+        }
+    }
+
+    // method for testing part with both parse.php and interpret.py script
+    function parse_and_interpret($prog_args, $tests) {
+        if ($this->parse($prog_args, $tests, true) == false) {
+            return;
+        }
+        $this->src_file = $this->tmp_file;
+        $this->interpret($prog_args, $tests);
+    }
+
     function set_name($name) {
         $this->name = $name;
     }
 
     function set_has_passed($has_passed) {
         $this->has_passed = $has_passed;
+    }
+
+    function set_my_rc($my_rc) {
+        $this->my_rc = $my_rc;
     }
 
     function get_has_passed() {
@@ -264,93 +366,17 @@ class test {
         return $this->ref_rc;
     }
 
-    function read_ref_rc() {
-        $this->ref_rc = trim(file_get_contents($this->rc_file), "\n");
-        return $this->ref_rc;
-    }
-
-    function set_my_rc($my_rc) {
-        $this->my_rc = $my_rc;
-    }
-
     function get_my_rc() {
         return $this->my_rc;
     }
 
-    function parse($prog_args, $tests, $before_interpret) {
-        $file = $this->get_name();
-        $out;
-        $parse_ret;
-        $result;
-        $command = "php8.1 ".$prog_args->get_parse_script()." <".$this->src_file." >".$this->tmp_file." 2>/dev/null";
-        exec($command, $out, $parse_ret);
-        $this->set_my_rc($parse_ret);
-        $this->read_ref_rc();
-        if ($before_interpret && $parse_ret == 0) {
-            $this->set_has_passed(true);
-            return true;
-        }
-        if($parse_ret != $this->ref_rc) {
-            $this->set_has_passed(false);
-            return false;
-        }
-        elseif ($parse_ret != 0) {
-            $this->set_has_passed(true);
-            return true;
-        }
-        else {            
-            $diff_command = "java -jar ".$prog_args->get_jexam()." ".$this->tmp_file." ".$this->out_file." /dev/null options";
-            exec($diff_command, $out, $compare_ret);
-            if($compare_ret != 0) {
-                $this->set_has_passed(false);
-                return false;
-            }
-            else {
-                $this->set_has_passed(true);
-                return true;
-            }
-        }
-    }
-
-    function interpret($prog_args, $tests) {
-        $out;
-        $int_ret;
-        $result;
-        $command = "python3.8 ".$prog_args->get_int_script()." --source=".$this->src_file." --input=".$this->in_file.
-                    " >".$this->tmp_file.".out 2>/dev/null";
-        
-        exec($command, $out, $int_ret);
-        $this->set_my_rc($int_ret);
-        $this->read_ref_rc();
-        $ref_out = file_get_contents($this->out_file);        
-        if($int_ret != $this->ref_rc) {
-            $this->set_has_passed(false);
-        }
-        elseif ($int_ret != 0) {
-            $this->set_has_passed(true);
-        }
-        else {
-            $diff_command = "diff ".$this->tmp_file.".out ".$this->out_file." >/dev/null";
-            exec($diff_command, $out, $compare_ret);
-            if($compare_ret != 0) {
-                $this->set_has_passed(false);
-            }
-            else {
-                $this->set_has_passed(true);
-            }
-        }
-    }
-
-    function parse_and_interpret($prog_args, $tests) {
-        if ($this->parse($prog_args, $tests, true) == false) {
-            return;
-        }
-        $this->src_file = $this->tmp_file;
-        $this->interpret($prog_args, $tests);
-    }
-    
+    function read_ref_rc() {
+        $this->ref_rc = trim(file_get_contents($this->rc_file), "\n");
+        return $this->ref_rc;
+    }    
 }
 
+// A class to represent all tests
 class test_set {
     public $tests;
     public $passed;
@@ -378,6 +404,7 @@ class test_set {
         array_push($this->passed_tests, $test);
     }
 
+    // goes through all tests and counts passed and failed tests
     function get_results() {
         foreach ($this->tests as $test) {
             if ($test->get_has_passed() == true) {
@@ -403,24 +430,8 @@ class test_set {
         return $this->tests;
     }
 
-    function print_results_to_console() {
-        $this->get_results();
-        $passed = $this->get_passed();
-        $failed = $this->get_failed();
-        echo("TEST RESULTS:\n\t\033[01;32mPASSED: ".$passed."\033[0m\n\t\033[01;31mFAILED: ".$failed."\033[0m\n");
-        if (count($this->failed_tests)) {
-            $test_paths = [];
-            $test_result = [];
-            echo "\nFAILED TESTS:\n";
-            foreach ($this->failed_tests as $test) {
-                $path = "\t".$test->get_name();           
-                $result = "\tEXPECTED: ".$test->get_ref_rc()."\tGOT: ".$test->get_my_rc()."\n";
-                echo $path.$result;
-            }
-        }
-    }
-
-    function print_results_to_html() {
+    // prints test results to stdout
+    function print_results() {
         $this->get_results();
         $passed = $this->get_passed();
         $failed = $this->get_failed();
@@ -438,7 +449,7 @@ class test_set {
         echo "<h1 style=\"color:white;\">Test results:</h1>
         <h3 style=\"color:white;\">PASSED: ".$passed."</h3>
         <h3 style=\"color:white;\">FAILED: ".$failed."</h3>\n";
-        if ($failed == 0) {
+        if ($failed == 0 && $passed != 0) {
             echo '<h1 style="color:green;">ALL PASSED</h1>';
         }
         if ($passed) {

@@ -13,6 +13,9 @@ import interpret_scopes as i_scopes
 import interpret_fuctions as i_func
 
 class argument:
+    """
+    A class to represent instruction arguments
+    """
     def __init__(self, type : str, content):
         self.type = type
         self.content = content
@@ -27,11 +30,72 @@ class argument:
         return self.type
 
 class instruction:
+    """
+    A class to represent instruction instructions
+    """
+    # shared list of all instructions
     instr_list = []
     def __init__(self, order : int, opcode : str = None):
         self.order = int(order)
         self.opcode = opcode
         self.instr_list.append(self)
+
+    def execute(self, scopes :  i_scopes.program_scopes):
+        """
+        Executes instruction
+
+        Each instruction should implement its own execute method
+        """
+        self.error_exit(99, "intruction not implemented")
+
+    def error_exit(self, error_code, error_message, *args):
+        """
+        Prints error to stderr and exits with given error code
+        """
+        print(f"Error: instruction o.{self.order} {self.opcode}: {error_message}", end='', file=sys.stderr)
+        for a in args:
+            a = i_func.value_for_print(a)
+            print('', a, end='', file=sys.stderr)
+        print(file=sys.stderr)
+        exit(error_code)
+    
+    @classmethod
+    def run(cls, scopes :  i_scopes.program_scopes, input_file):
+        """
+        Executes all instructions one by one
+        """
+        try:
+            i = cls.instr_list[scopes.get_instr_num()]
+        except IndexError:
+            return
+        if i.get_opcode() == 'READ':
+            i.execute(scopes, input_file)
+        else:
+            i.execute(scopes)
+        scopes.inc_instr_num()
+        cls.run(scopes, input_file)  
+    
+    def sort_instr_list(self):
+        """
+        Sorts instructions based on order
+        """
+        i_list = self.get_list()
+        i_list.sort(key=lambda x: x.get_order())
+        for index, i in enumerate(i_list):
+            if index + 1 != len(i_list):
+                if i.get_order() == i_list[index+1].get_order():
+                    self.error_exit(32, "order duplicate")
+
+    def find_label(self, label : str):
+        """
+        Return index of given label
+        """
+        i_list = self.get_list()
+        for index, instr in enumerate(i_list):
+            if instr.get_opcode() == 'LABEL':
+                if instr.get_label_name() == label:
+                    return index - 1
+        self.error_exit(52, "label not defined -", label)
 
     def get_list(self):
         return self.instr_list
@@ -42,51 +106,12 @@ class instruction:
     def get_opcode(self):
         return self.opcode
 
-    def execute(self, scopes :  i_scopes.program_scopes):
-        self.error_exit(99, "intruction not implemented")
-    
-    def run(self, scopes :  i_scopes.program_scopes, input_file):
-        try:
-            i = self.instr_list[scopes.get_instr_num()]
-        except IndexError:
-            return
-        if i.get_opcode() == 'READ':
-            i.execute(scopes, input_file)
-        else:
-            i.execute(scopes)
-        scopes.inc_instr_num()
-        self.run(scopes, input_file)  
-    
-    def sort_instr_list(self):
-        i_list = self.get_list()
-        i_list.sort(key=lambda x: x.get_order())
-        for index, i in enumerate(i_list):
-            if index + 1 != len(i_list):
-                if i.get_order() == i_list[index+1].get_order():
-                    self.error_exit(32, "order duplicate")
-
-    def find_label(self, label : str):
-        i_list = self.get_list()
-        for index, instr in enumerate(i_list):
-            if instr.get_opcode() == 'LABEL':
-                if instr.get_label_name() == label:
-                    return index - 1
-        self.error_exit(52, "label not defined -", label)
-
-    def error_exit(self, error_code, error_message, *args):
-        print(f"Error: instruction n.{self.order} {self.opcode}: {error_message}", end='', file=sys.stderr)
-        for a in args:
-            a = i_func.value_for_print(a)
-            print('', a, end='', file=sys.stderr)
-        print(file=sys.stderr)
-        exit(error_code)
-
 # no arguments
-class no_operands_instr(instruction):
+class no_arg_instr(instruction):
     def __init__(self, order : int):
         super().__init__(order)
 
-class instr_createframe(no_operands_instr):
+class instr_createframe(no_arg_instr):
     def __init__(self, order : int):
         super().__init__(order)
         self.opcode = "CREATEFRAME"
@@ -94,7 +119,7 @@ class instr_createframe(no_operands_instr):
     def execute(self, scopes : i_scopes.program_scopes):
         scopes.createframe()
 
-class instr_pushframe(no_operands_instr):
+class instr_pushframe(no_arg_instr):
     def __init__(self, order : int):
         super().__init__(order)
         self.opcode = "PUSHFRAME"
@@ -102,7 +127,7 @@ class instr_pushframe(no_operands_instr):
     def execute(self, scopes : i_scopes.program_scopes):
         scopes.pushframe(self)
 
-class instr_popframe(no_operands_instr):
+class instr_popframe(no_arg_instr):
     def __init__(self, order : int):
         super().__init__(order)
         self.opcode = "POPFRAME"
@@ -110,7 +135,7 @@ class instr_popframe(no_operands_instr):
     def execute(self, scopes : i_scopes.program_scopes):
         scopes.popframe(self)
 
-class instr_return(no_operands_instr):
+class instr_return(no_arg_instr):
     def __init__(self, order : int):
         super().__init__(order)
         self.opcode = "RETURN"
@@ -119,7 +144,7 @@ class instr_return(no_operands_instr):
         index = scopes.get_return_num(self) - 1
         scopes.set_intr_num(index)
 
-class instr_break(no_operands_instr):
+class instr_break(no_arg_instr):
     def __init__(self, order : int):
         super().__init__(order)
         self.opcode = "BREAK"
@@ -316,13 +341,10 @@ class instr_read(two_arg_instr):
 
     def execute(self, scopes: i_scopes.program_scopes, input_file):
         try:
-            if input_file.name == '<stdin>':
-                val = input()
-            else:
-                val = input_file.readline()
-                if val:
-                    if val[-1] == "\n":
-                        val = val[:-1]
+            val = input_file.readline()
+            if val:
+                if val[-1] == "\n":
+                    val = val[:-1]                
         except EOFError:
                 scopes.set_var(self, self.arg1.get_value(self), 'nil', 'nil')
                 return
@@ -600,6 +622,23 @@ class instr_jumpifneq(three_arg_instr):
 
 class factory:
     @classmethod
+    def create_instruction(cls, instr):
+        """
+        Returns created instruction with all arguments
+        """
+        order = instr.get("order")
+        opcode = instr.get("opcode")
+        args = {}
+        for i in range(1,4):
+            arg = instr.findall(f"./arg{i}")
+            if len(arg) > 1:
+                print(f"Error: instruction o.{order} {opcode}: instruction has more arguments with the same number - arg{i}", file=sys.stderr)
+                exit(32)
+            if arg:
+                args[f"arg{i}"] = cls.get_argument(arg[0], order, opcode)
+        return cls.get_instruction(order, opcode, **args)
+
+    @classmethod
     def get_instruction(cls, order : int, opcode : str,
                 arg1 : argument = None, arg2 : argument = None, arg3 : argument = None):
         no_argument = {
@@ -662,7 +701,7 @@ class factory:
     def get_argument(cls, arg, order, opcode):
         arg_type = arg.get('type')
         if not arg_type:
-            print(f"Error: instruction n.{order} {opcode}: argument {arg.tag} has no type atribute")
+            print(f"Error: instruction o.{order} {opcode}: argument {arg.tag} has no type atribute", file=sys.stderr)
             exit(32)
         if arg_type == 'int':
             arg_content = int(arg.text)        
@@ -679,17 +718,3 @@ class factory:
         else:
             arg_content = arg.text
         return argument(arg_type, arg_content)
-
-    @classmethod
-    def create_instruction(cls, instr):
-        order = instr.get("order")
-        opcode = instr.get("opcode")
-        args = {}
-        for i in range(1,4):
-            arg = instr.findall(f"./arg{i}")
-            if len(arg) > 1:
-                i_func.error_exit_on_instruction(order, opcode, 32,
-                    f"instruction has more arguments with the same number - arg{i}")
-            if arg:
-                args[f"arg{i}"] = cls.get_argument(arg[0], order, opcode)
-        return cls.get_instruction(order, opcode, **args)

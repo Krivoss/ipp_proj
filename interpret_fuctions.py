@@ -6,11 +6,14 @@
     Brief: File for argument parsing and some helper functions
 '''
 
-import os.path
+import os
 import sys
 import re
 
 class program_arguments:
+    """
+    A class to encapsulate program arguments
+    """
     def __init__(self):
         self.will_print_help = False
         self.has_source_file = False
@@ -19,6 +22,11 @@ class program_arguments:
         self.input_file = '-'     
 
     def process_args(self):
+        """
+        Method for processing arguments
+
+        If arguments are valid the arguments will be executed or the data will be stored in the object
+        """
         for arg in sys.argv:
             # -h, --help
             if arg == '-h' or arg == '--help':
@@ -53,6 +61,9 @@ class program_arguments:
             exit(10)
 
     def get_source_file(self):
+        """
+        Returns open file or stdin
+        """
         if self.has_source_file:
             file = open(self.source_file)
         else:
@@ -60,6 +71,9 @@ class program_arguments:
         return file
 
     def get_input_file(self):
+        """
+        Returns open file or stdin
+        """
         if self.has_input_file:
             file = open(self.input_file)
         else:
@@ -67,28 +81,45 @@ class program_arguments:
         return file
 
 def file_validity(file_str, type):
+    """
+    Exits if file is not valid
+    """
     path = os.path.normpath(file_str)
     if not os.path.isfile(path):
         print(f"Error: --{type} file \"{file_str}\" does not exist", file=sys.stderr)
         exit(11)
+    if not os.access(file_str, os.R_OK):
+        print(f"Error: --{type} file \"{file_str}\" is not readable", file=sys.stderr)
+        exit(11)
 
 def print_help():
-        print("usage: interpret.py [-h] (--source SOURCE | --input INPUT)\n\n"
-              "optional arguments:\n"
-              "  -h, --help       show this help message and exit\n"
-              "  --source SOURCE  source file with XML of source code\n"
-              "  --input INPUT    file with input for interpret", file=sys.stderr)
+    """
+    Prints help message
+    """
+    print("usage: interpret.py [-h] (--source SOURCE | --input INPUT)\n\n"
+            "optional arguments:\n"
+            "  -h, --help       show this help message and exit\n"
+            "  --source SOURCE  source file with XML of source code\n"
+            "  --input INPUT    file with input for interpret", file=sys.stderr)
 
 def error_exit_xml_format():
     print("Error: invalid XML format", file=sys.stderr)
     exit(31)
 
 def args_process():
+    """
+    Processes the program arguments
+
+    Returns program_arguments object
+    """
     args = program_arguments()
     args.process_args()
     return args
 
 def value_for_print(value):
+    """
+    Returns value for printing
+    """
     if type(value) == bool:
         if value == True:
             return 'true'
@@ -103,9 +134,15 @@ def convert_to_char(match_obj):
         return chr(num)
 
 def str_escape(string : str):
+    """
+    Returns string with escape sequences changed to characters
+    """
     return re.sub(r'\\\d{3}', convert_to_char, string)
 
 def get_symb_value(instr, scopes, symb):
+    """
+    Returns value of symb
+    """
     if symb.get_type() == 'var':
         val = scopes.get_var(instr, symb.get_value(instr)).get_value(instr)
     else:
@@ -113,6 +150,9 @@ def get_symb_value(instr, scopes, symb):
     return val
 
 def get_symb_type(instr, scopes, symb):
+    """
+    Returns type of symb
+    """
     if symb.get_type() == 'var':
         get_symb_value(instr, scopes, symb)
         val_type = scopes.get_var(instr, symb.get_value(instr)).get_type()
@@ -121,6 +161,11 @@ def get_symb_type(instr, scopes, symb):
     return val_type
 
 def get_symb_type_no_err(instr, scopes, symb):
+    """
+    For instruction TYPE
+
+    Returns type of symb    
+    """
     if symb.get_type() == 'var':
         val_type = scopes.get_var(instr, symb.get_value(instr)).get_type()
     else:

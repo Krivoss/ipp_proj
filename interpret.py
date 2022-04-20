@@ -27,7 +27,7 @@ def main():
 
         if instructions:
             i.sort_instr_list()
-            i.run(scopes, input_file)                    
-
+            i.run(scopes, input_file)
+            
 if __name__=="__main__":
     main()

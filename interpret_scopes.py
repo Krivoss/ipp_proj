@@ -11,6 +11,9 @@ import sys
 import interpret_fuctions as i_func
 
 class variable:
+    """
+    A class to represent a variable
+    """
     def __init__(self, value = None, var_type = ''):
         self.value = value
         self.var_type = var_type
@@ -22,35 +25,38 @@ class variable:
         else:
             instr.error_exit(56, f"variable not initialized")
 
+    def get_type(self):
+        return self.var_type
+
     def set_value(self, value, var_type):
         if var_type == 'string':
             value = i_func.str_escape(value)
         self.value = value
         self.var_type = var_type
-        self.initialized = True
-
-    def get_type(self):
-        return self.var_type
+        self.initialized = True    
 
 class scope:
+    """
+    A class to represent a scope
+    """
     def __init__(self, scope_type):
         self.var_list = {}
-        self.scope_type = scope_type
-    
-    def set_scope(self, scope_type) -> None:
         self.scope_type = scope_type
 
     def define_var(self, instr, name) -> None:
         if name in self.var_list:
             instr.error_exit(52, f"{self.scope_type}@{name} already defined")
         else:
-            self.var_list[name] = variable()
-
+            self.var_list[name] = variable()  
+    
     def get_var(self, instr, name) -> variable:
         if name not in self.var_list:
             instr.error_exit(54, f"{self.scope_type}@{name} not defined")
         else:
             return self.var_list[name]
+    
+    def set_scope(self, scope_type) -> None:
+        self.scope_type = scope_type  
 
     def set_var(self, instr, name, value, var_type) -> None:
         if name not in self.var_list:
@@ -59,6 +65,9 @@ class scope:
             self.var_list[name].set_value(value, var_type)
 
 class program_scopes:
+    """
+    A class to represent scopes, stack and return stack
+    """
     def __init__(self):
         self.gf_scope = scope('GF')
         self.tf_scope = None
@@ -68,6 +77,9 @@ class program_scopes:
         self.return_stack = []
 
     def def_var(self, instr, name) -> None:
+        """
+        Defines variable, frame decided based on variable prefix 
+        """
         scope_prefix = name[:2]
         var_name = name[3:]
         if scope_prefix == 'GF':
@@ -81,6 +93,9 @@ class program_scopes:
             exit(99)
 
     def get_var(self, instr, name) -> variable:
+        """
+        Returns variable with given name
+        """
         scope_prefix = name[:2]
         var_name = name[3:]
         if scope_prefix == 'GF':
@@ -95,6 +110,9 @@ class program_scopes:
         
 
     def set_var(self, instr, name, value, value_type) -> None:
+        """
+        Sets value to a variable with given name
+        """
         scope_prefix = name[:2]
         var_name = name[3:]
         if scope_prefix == 'GF':
@@ -107,6 +125,7 @@ class program_scopes:
             print("INTERNAL ERROR: scope detection failed", file=sys.stderr)
             exit(99)
 
+    # frame methods
     def createframe(self) -> None:
         self.tf_scope = scope('TF')
 
@@ -126,6 +145,7 @@ class program_scopes:
         else:
             instr.error_exit(55, f"popping non existent LF")
 
+    # stack methods
     def push_stack(self, var : variable) -> None:
         self.stack.append(var)
 
@@ -134,7 +154,29 @@ class program_scopes:
             return self.stack.pop()
         else:
             instr.error_exit(56, f"popping empty stack")
+
+    # methods for program flow
+    def get_instr_num(self) -> int:
+        return self.intr_num
+
+    def inc_instr_num(self) -> None:
+        self.intr_num += 1
+    
+    def set_intr_num(self, num : int) -> None:
+        self.intr_num = num
+
+    def get_return_num(self, instr) -> int:
+        if len(self.return_stack):
+            ret = int(self.return_stack[-1])
+            self.return_stack.pop()
+            return ret
+        else:
+            instr.error_exit(56, f"return without call")
+    
+    def set_return_num(self, num : int) -> None:
+        self.return_stack.append(str(num))
         
+    # methods working with specific frames
     def __get_lf(self, instr) -> scope:
         if self.lf_scopes:
             return self.lf_scopes[-1]
@@ -188,25 +230,3 @@ class program_scopes:
     def __set_gf_var(self, instr, name, value, value_type) -> None:
         gf = self.__get_gf()
         gf.set_var(instr, name, value, value_type)
-        
-
-    # methods for program flow
-    def get_instr_num(self) -> int:
-        return self.intr_num
-
-    def inc_instr_num(self) -> None:
-        self.intr_num += 1
-    
-    def set_intr_num(self, num : int) -> None:
-        self.intr_num = num
-
-    def get_return_num(self, instr) -> int:
-        if len(self.return_stack):
-            ret = int(self.return_stack[-1])
-            self.return_stack.pop()
-            return ret
-        else:
-            instr.error_exit(56, f"return without call")
-    
-    def set_return_num(self, num : int) -> None:
-        self.return_stack.append(str(num))
