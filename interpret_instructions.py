@@ -632,8 +632,8 @@ class factory:
         for i in range(1,4):
             arg = instr.findall(f"./arg{i}")
             if len(arg) > 1:
-                i_func.error_exit_on_instruction(order, opcode, 32,
-                    f"instruction has more arguments with the same number - arg{i}")
+                print(f"Error: instruction o.{order} {opcode}: instruction has more arguments with the same number - arg{i}", file=sys.stderr)
+                exit(32)
             if arg:
                 args[f"arg{i}"] = cls.get_argument(arg[0], order, opcode)
         return cls.get_instruction(order, opcode, **args)
@@ -701,7 +701,7 @@ class factory:
     def get_argument(cls, arg, order, opcode):
         arg_type = arg.get('type')
         if not arg_type:
-            print(f"Error: instruction o.{order} {opcode}: argument {arg.tag} has no type atribute")
+            print(f"Error: instruction o.{order} {opcode}: argument {arg.tag} has no type atribute", file=sys.stderr)
             exit(32)
         if arg_type == 'int':
             arg_content = int(arg.text)        
