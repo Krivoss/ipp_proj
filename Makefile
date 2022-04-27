@@ -1,21 +1,26 @@
 .PHONY: all build clean
 
+DOC=doc
+TEST=files_for_testing
+
 all: pack
 
 both_test:
-	php8.1 test.php --recursive --directory="GHtests/both" --jexampath=./ >out.html
+	php8.1 test.php --recursive --directory="GHtests/both" --jexampath=files_for_testing >out.html
 
 pack1: clean
-	zip -r xkriva30.zip parse.php test.php interpret*.py readme1.pdf
+	zip xkriva30.zip -j parse.php test.php interpret*.py $(DOC)/readme1.pdf
 
 pack2: clean
-	zip -r xkriva30.zip parse.php test.php interpret*.py readme1.pdf readme2.pdf
+	zip xkriva30.zip -j parse.php test.php interpret*.py $(DOC)/readme1.pdf $(DOC)/readme2.pdf
 
 test_ok1: pack1
-	./is_it_ok.sh xkriva30.zip test_ok 1
+	cp xkriva30.zip $(TEST)
+	./$(TEST)/is_it_ok.sh xkriva30.zip $(TEST)/test_ok 1
 
 test_ok2: pack2
-	./is_it_ok.sh xkriva30.zip test_ok 2
+	cp xkriva30.zip $(TEST)
+	./$(TEST)/is_it_ok.sh xkriva30.zip $(TEST)/test_ok 2
 	
 clean:
-	rm -rf xkriva30.zip temp* out.html
+	rm -rf xkriva30.zip $(TEST)/xkriva30.zip temp* out.html
