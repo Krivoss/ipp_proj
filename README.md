@@ -27,7 +27,7 @@
   * --input=INPUT
     - input for the runtime of interpretation
   * if either of source or input is not selected the missing data will be read from the standard input
-  * result of interpretation is on the standard output
+- result of interpretation is on the standard output
 
 ### test.php
 - The script should be run like this: `php8.1 test.php [options]`
@@ -48,3 +48,5 @@
         + Path to jaxamxml.jar file
     - --noclean 
         + Auxilliary files will not be deleted during testing
+- result of testing is on the standard output in html format
+

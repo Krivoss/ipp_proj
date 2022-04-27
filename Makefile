@@ -6,7 +6,7 @@ TEST=files_for_testing
 all: pack
 
 both_test:
-	php8.1 test.php --recursive --directory="GHtests/both" --jexampath=files_for_testing >out.html
+	php8.1 test.php --recursive --directory="tests/both" --jexampath=files_for_testing/ >out.html
 
 pack1: clean
 	zip xkriva30.zip -j parse.php test.php interpret*.py $(DOC)/readme1.pdf
