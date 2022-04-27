@@ -1,5 +1,4 @@
 # IPP project
----
 
 - author: Jakub Křivánek
 - About project
@@ -8,7 +7,6 @@
   * Second part is `interpret.py`. This script takes the XML which parse.php made and interprets it.
   * The last part `test.php` is for testing both previous scripts.
 
----
 ## Usage
 ### parse.php
 - The script should be run like this: `php8.1 parse.php [-h] < SOURCE > OUT_XML` 
@@ -34,19 +32,25 @@
   * Optional parametrs:
     - --directory=path 
         + Tests will be searched in given directory
+        + default is current directory
     - --recursive 
         + Tests will also be searched recursivly in given directory
     - --parse-script=file 
         + File with script for analysis of source code in IPPcode22
+        + default is parse.php in current directory
     - --int-script=file 
         + File with XML interpret script
+        + default is interpret.py in current directory
     - --parse-only 
         + Only parser will be tested
     - --int-only 
         + Only interpret will be tested
     - --jexampath=path 
         + Path to jaxamxml.jar file
+        + default is /pub/courses/ipp/jexamxml/
     - --noclean 
         + Auxilliary files will not be deleted during testing
+  * if neither of --int-only and --parse-only is selected the script will test both of them
+    - Meaning it will take the output of parse.php as source for interpret.py
 - result of testing is on the standard output in html format
 
